@@ -53,6 +53,24 @@
                 <!-- Rich Text Div for Stickers/Emojis -->
                 <div id="card-text" class="admin-input" contenteditable="true" placeholder="Description..."></div>
                 
+                <!-- Special Card Options -->
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 5px;">
+                    <input type="checkbox" id="is-special" style="width: 20px; height: 20px;">
+                    <label for="is-special" style="color: white;">Carte Spéciale (Explosion)</label>
+                </div>
+                <input type="text" id="explosion-emojis" class="admin-input" placeholder="Emojis (ex: ❤️🎉🔥) - séparés ou ensemble" style="display: none;">
+
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+                    <input type="checkbox" id="is-scratch" style="width: 20px; height: 20px;">
+                    <label for="is-scratch" style="color: white;">Carte à Gratter (Surprise)</label>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 5px;">
+                    <input type="checkbox" id="is-flip" style="width: 20px; height: 20px;">
+                    <label for="is-flip" style="color: white;">Double Tap (Retourner)</label>
+                </div>
+                <input type="text" id="flip-text" class="admin-input" placeholder="Texte au dos de la carte..." style="display: none;">
+
                 <input type="file" id="card-image" class="admin-input" accept="image/*">
                 <div style="position: relative;">
                     <img id="preview" class="preview-img">
@@ -262,6 +280,34 @@
             const data = doc.data();
             document.getElementById('card-title').value = data.title;
             document.getElementById('card-text').innerHTML = data.text; // Use innerHTML for rich text
+            
+            // Load Special Card Data
+            if (data.isSpecial) {
+                document.getElementById('is-special').checked = true;
+                document.getElementById('explosion-emojis').style.display = 'block';
+                document.getElementById('explosion-emojis').value = data.explosionEmojis || '';
+            } else {
+                document.getElementById('is-special').checked = false;
+                document.getElementById('explosion-emojis').style.display = 'none';
+                document.getElementById('explosion-emojis').value = '';
+            }
+
+            if (data.isScratch) {
+                document.getElementById('is-scratch').checked = true;
+            } else {
+                document.getElementById('is-scratch').checked = false;
+            }
+
+            if (data.isFlip) {
+                document.getElementById('is-flip').checked = true;
+                document.getElementById('flip-text').style.display = 'block';
+                document.getElementById('flip-text').value = data.flipText || '';
+            } else {
+                document.getElementById('is-flip').checked = false;
+                document.getElementById('flip-text').style.display = 'none';
+                document.getElementById('flip-text').value = '';
+            }
+
             preview.src = data.image;
             preview.style.display = 'block';
             
@@ -283,9 +329,32 @@
         // Cancel Edit
         cancelEditBtn.addEventListener('click', resetForm);
 
+        // Toggle Special Card Input
+        const isSpecialCheckbox = document.getElementById('is-special');
+        const explosionEmojisInput = document.getElementById('explosion-emojis');
+        const isScratchCheckbox = document.getElementById('is-scratch');
+        const isFlipCheckbox = document.getElementById('is-flip');
+        const flipTextInput = document.getElementById('flip-text');
+
+        isSpecialCheckbox.addEventListener('change', function() {
+            explosionEmojisInput.style.display = this.checked ? 'block' : 'none';
+        });
+
+        isFlipCheckbox.addEventListener('change', function() {
+            flipTextInput.style.display = this.checked ? 'block' : 'none';
+        });
+
         function resetForm() {
             document.getElementById('card-title').value = '';
             document.getElementById('card-text').innerHTML = ''; // Reset innerHTML
+            isSpecialCheckbox.checked = false;
+            isScratchCheckbox.checked = false;
+            isFlipCheckbox.checked = false;
+            explosionEmojisInput.value = '';
+            explosionEmojisInput.style.display = 'none';
+            flipTextInput.value = '';
+            flipTextInput.style.display = 'none';
+            
             fileInput.value = '';
             preview.style.display = 'none';
             document.getElementById('btn-recrop').style.display = 'none';
@@ -414,6 +483,11 @@
         btnAdd.addEventListener('click', async () => {
             const titleVal = document.getElementById('card-title').value;
             const textVal = document.getElementById('card-text').innerHTML; // Get innerHTML
+            const isSpecial = document.getElementById('is-special').checked;
+            const isScratch = document.getElementById('is-scratch').checked;
+            const isFlip = document.getElementById('is-flip').checked;
+            const explosionEmojis = document.getElementById('explosion-emojis').value;
+            const flipText = document.getElementById('flip-text').value;
             const status = document.getElementById('status');
 
             if (!titleVal || !compressedImageBase64) {
@@ -430,6 +504,11 @@
                         title: titleVal,
                         text: textVal,
                         image: compressedImageBase64,
+                        isSpecial: isSpecial,
+                        isScratch: isScratch,
+                        isFlip: isFlip,
+                        explosionEmojis: isSpecial ? explosionEmojis : null,
+                        flipText: isFlip ? flipText : null,
                         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
                     status.innerText = 'Modifié avec succès !';
@@ -443,6 +522,11 @@
                         title: titleVal,
                         text: textVal,
                         image: compressedImageBase64,
+                        isSpecial: isSpecial,
+                        isScratch: isScratch,
+                        isFlip: isFlip,
+                        explosionEmojis: isSpecial ? explosionEmojis : null,
+                        flipText: isFlip ? flipText : null,
                         createdAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
                     status.innerText = 'Ajouté avec succès !';
