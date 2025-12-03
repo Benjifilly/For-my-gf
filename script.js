@@ -145,7 +145,6 @@ function createCardElement(data) {
                     <div class="card-back-overlay"></div>
                     <div class="card-back-content">
                         <p>${data.flipText || data.text}</p>
-                        <div style="margin-top: 20px; font-size: 40px;">😽</div>
                     </div>
                 </div>
             </div>
@@ -671,3 +670,38 @@ function triggerEmojiExplosion(emojis) {
 
 // Start
 loadCards();
+
+// iOS Install Prompt Logic
+function checkIOSInstall() {
+    // Detects if device is iOS
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    // Detects if app is in standalone mode (PWA)
+    const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+    
+    if (isIOS && !isStandalone) {
+        const prompt = document.getElementById('ios-install-prompt');
+        const btn = document.querySelector('.install-btn');
+        
+        if (prompt && btn) {
+            // Show the prompt with a small delay for better UX
+            setTimeout(() => {
+                prompt.style.display = 'flex';
+            }, 2000);
+            
+            // Close button logic
+            btn.addEventListener('click', () => {
+                prompt.style.display = 'none';
+            });
+            
+            // Close if clicking outside the content (on the backdrop)
+            prompt.addEventListener('click', (e) => {
+                if (e.target === prompt) {
+                    prompt.style.display = 'none';
+                }
+            });
+        }
+    }
+}
+
+// Run the check
+checkIOSInstall();
