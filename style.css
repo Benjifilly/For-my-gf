@@ -121,6 +121,26 @@ body {
     text-shadow: 0 1px 5px rgba(0,0,0,0.3);
 }
 
+.card-text img {
+    height: 1.5em;
+    width: auto;
+    vertical-align: middle;
+    margin: 0 2px;
+}
+
+.admin-input[contenteditable] {
+    min-height: 100px;
+    overflow-y: auto;
+    resize: vertical;
+    display: inline-block;
+}
+
+.admin-input[contenteditable]:empty:before {
+    content: attr(placeholder);
+    color: rgba(255, 255, 255, 0.5);
+    display: block; /* For Firefox */
+}
+
 .loading {
     position: absolute;
     color: white;

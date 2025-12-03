@@ -37,7 +37,9 @@
             
             <div id="admin-form" style="display:none; flex-direction: column; gap: 15px;">
                 <input type="text" id="card-title" class="admin-input" placeholder="Titre (ex: Notre voyage)">
-                <textarea id="card-text" class="admin-input" rows="4" placeholder="Description..."></textarea>
+                
+                <!-- Rich Text Div for Stickers/Emojis -->
+                <div id="card-text" class="admin-input" contenteditable="true" placeholder="Description..."></div>
                 
                 <input type="file" id="card-image" class="admin-input" accept="image/*">
                 <img id="preview" class="preview-img">
@@ -241,7 +243,7 @@
             
             const data = doc.data();
             document.getElementById('card-title').value = data.title;
-            document.getElementById('card-text').value = data.text;
+            document.getElementById('card-text').innerHTML = data.text; // Use innerHTML for rich text
             preview.src = data.image;
             preview.style.display = 'block';
             
@@ -262,7 +264,7 @@
 
         function resetForm() {
             document.getElementById('card-title').value = '';
-            document.getElementById('card-text').value = '';
+            document.getElementById('card-text').innerHTML = ''; // Reset innerHTML
             fileInput.value = '';
             preview.style.display = 'none';
             btnAdd.innerText = 'Publier';
@@ -271,6 +273,31 @@
             currentEditId = null;
             compressedImageBase64 = null;
         }
+
+        // Handle paste for images (Memojis/Stickers) in description
+        const cardTextDiv = document.getElementById('card-text');
+        
+        cardTextDiv.addEventListener('paste', function(e) {
+            const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+            let blob = null;
+            
+            for (let i = 0; i < items.length; i++) {
+                if (items[i].type.indexOf("image") === 0) {
+                    blob = items[i].getAsFile();
+                    break;
+                }
+            }
+            
+            if (blob) {
+                e.preventDefault();
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const img = `<img src="${event.target.result}">`;
+                    document.execCommand('insertHTML', false, img);
+                };
+                reader.readAsDataURL(blob);
+            }
+        });
 
         // Image Preview & Compression Logic
         const fileInput = document.getElementById('card-image');
@@ -319,7 +346,7 @@
         // Upload / Update Logic
         btnAdd.addEventListener('click', async () => {
             const titleVal = document.getElementById('card-title').value;
-            const textVal = document.getElementById('card-text').value;
+            const textVal = document.getElementById('card-text').innerHTML; // Get innerHTML
             const status = document.getElementById('status');
 
             if (!titleVal || !compressedImageBase64) {
