@@ -135,43 +135,308 @@ body {
 }
 
 /* Admin specific styles */
-.admin-container {
+.admin-body {
+    background: #0f0f11;
+    min-height: 100vh;
+    padding: 40px 0;
+}
+
+.admin-wrapper {
     width: 100%;
-    max-width: 500px;
+    max-width: 450px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+.admin-card {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 24px;
+    padding: 30px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+
+.admin-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 25px;
+    text-align: center;
+    color: white;
+}
+
+/* Sidebar & Toggle */
+.sidebar-toggle {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 100;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: rgba(26, 26, 26, 0.8);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: white;
+    font-size: 1.2rem;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s, background 0.2s;
+}
+
+.sidebar-toggle:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.sidebar-toggle:active {
+    transform: scale(0.9);
+}
+
+.sidebar {
+    position: fixed;
+    top: 0;
+    right: -100%; /* Hidden by default */
+    width: 85%;
+    max-width: 400px;
+    height: 100%;
+    background: rgba(26, 26, 26, 0.95);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    z-index: 200;
+    transition: right 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: -10px 0 40px rgba(0,0,0,0.5);
+    border-top-left-radius: 30px;
+    border-bottom-left-radius: 30px;
+}
+
+.sidebar.active {
+    right: 0;
+}
+
+.sidebar-header {
+    padding: 30px 25px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: transparent;
+}
+
+.sidebar-header h3 {
+    color: white;
+    font-size: 1.4rem;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+}
+
+.close-sidebar {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    color: white;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.close-sidebar:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.cards-list {
+    flex: 1;
+    overflow-y: auto;
     padding: 20px;
     display: flex;
     flex-direction: column;
     gap: 15px;
-    height: 100vh;
-    overflow-y: auto;
+}
+
+.sidebar-overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(4px);
+    z-index: 150;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+}
+
+.sidebar-overlay.active {
+    opacity: 1;
+    pointer-events: all;
+}
+
+/* Adjust list item for sidebar */
+.admin-list-item {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 20px;
+    padding: 12px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    transition: all 0.2s ease;
+}
+
+.admin-list-item:active {
+    transform: scale(0.98);
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.list-thumb {
+    width: 60px;
+    height: 60px;
+    border-radius: 14px;
+    object-fit: cover;
+    background: #333;
+    flex-shrink: 0;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+
+.list-info {
+    flex: 1;
+    overflow: hidden;
+}
+
+.list-title {
+    font-weight: bold;
+    color: white;
+    margin-bottom: 5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 1rem;
+}
+
+.list-id {
+    font-size: 0.8rem;
+    color: #888;
+}
+
+.list-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.btn-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px; /* More modern shape */
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+}
+
+.btn-icon:active {
+    transform: scale(0.95);
+}
+
+.btn-edit { 
+    background: rgba(255, 255, 255, 0.1); 
+    color: white; 
+    border: 1px solid rgba(255,255,255,0.2);
+}
+
+.btn-edit:hover {
+    background: white;
+    color: black;
+}
+
+.btn-delete { 
+    background: rgba(255, 75, 75, 0.1); 
+    color: #ff4b4b; 
+    border: 1px solid rgba(255, 75, 75, 0.3);
+}
+
+.btn-delete:hover {
+    background: #ff4b4b;
+    color: white;
 }
 
 .admin-input {
-    background: rgba(255,255,255,0.1);
-    border: 1px solid rgba(255,255,255,0.2);
-    padding: 15px;
-    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 16px;
+    border-radius: 16px;
     color: white;
     font-size: 1rem;
     width: 100%;
+    outline: none;
+    transition: border-color 0.3s, background 0.3s;
+    font-family: inherit;
+}
+
+.admin-input:focus {
+    border-color: rgba(255, 255, 255, 0.3);
+    background: rgba(0, 0, 0, 0.5);
 }
 
 .admin-btn {
     background: white;
     color: black;
     border: none;
-    padding: 15px;
-    border-radius: 12px;
-    font-weight: bold;
+    padding: 16px;
+    border-radius: 16px;
+    font-weight: 600;
     font-size: 1rem;
     cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    width: 100%;
+    margin-top: 10px;
+}
+
+.admin-btn:active {
+    transform: scale(0.98);
 }
 
 .preview-img {
     width: 100%;
-    height: 200px;
+    height: 250px;
     object-fit: cover;
-    border-radius: 12px;
-    background: #333;
+    border-radius: 16px;
+    background: rgba(0,0,0,0.3);
     display: none;
+    margin-top: 10px;
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
+/* Empty State */
+.empty-message {
+    text-align: center;
+    padding: 40px;
+    opacity: 0;
+    animation: fadeIn 1s forwards;
+}
+
+.empty-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 10px;
+    color: #fff;
+}
+
+.empty-subtitle {
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+@keyframes fadeIn {
+    to { opacity: 1; }
 }

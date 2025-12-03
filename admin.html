@@ -5,28 +5,69 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin - Ajouter une carte</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="modal.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
-<body>
-    <div class="admin-container">
-        <h2>Ajouter un souvenir</h2>
-        
-        <input type="password" id="admin-pass" class="admin-input" placeholder="Mot de passe secret">
-        
-        <div id="admin-form" style="display:none; flex-direction: column; gap: 15px;">
-            <input type="text" id="card-title" class="admin-input" placeholder="Titre (ex: Notre voyage)">
-            <textarea id="card-text" class="admin-input" rows="4" placeholder="Description..."></textarea>
+<body class="admin-body">
+    
+    <!-- Sidebar Toggle -->
+    <button id="sidebar-toggle" class="sidebar-toggle" style="display:none;">
+        <i class="fas fa-list"></i>
+    </button>
+
+    <!-- Sidebar -->
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h3>Mes Souvenirs</h3>
+            <button class="close-sidebar" id="close-sidebar"><i class="fas fa-times"></i></button>
+        </div>
+        <div id="cards-list" class="cards-list"></div>
+    </div>
+
+    <div class="admin-wrapper">
+        <div class="admin-card">
+            <h2 class="admin-title">Connexion Admin</h2>
             
-            <input type="file" id="card-image" class="admin-input" accept="image/*">
-            <img id="preview" class="preview-img">
+            <div id="login-form" style="display: flex; flex-direction: column; gap: 10px;">
+                <input type="email" id="admin-email" class="admin-input" placeholder="Email">
+                <input type="password" id="admin-pass" class="admin-input" placeholder="Mot de passe">
+                <button id="btn-login" class="admin-btn">Se connecter</button>
+            </div>
             
-            <button id="btn-add" class="admin-btn">Publier</button>
-            <div id="status" style="text-align: center; opacity: 0.7;"></div>
+            <div id="admin-form" style="display:none; flex-direction: column; gap: 15px;">
+                <input type="text" id="card-title" class="admin-input" placeholder="Titre (ex: Notre voyage)">
+                <textarea id="card-text" class="admin-input" rows="4" placeholder="Description..."></textarea>
+                
+                <input type="file" id="card-image" class="admin-input" accept="image/*">
+                <img id="preview" class="preview-img">
+                
+                <div style="display:flex; gap:10px;">
+                    <button id="btn-add" class="admin-btn" style="flex:1;">Publier</button>
+                    <button id="cancel-edit" class="admin-btn" style="flex:1; background:#333; color:white; display:none;">Annuler</button>
+                </div>
+                <div id="status" style="text-align: center; opacity: 0.7; color: white; margin-top: 10px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Modal -->
+    <div id="delete-modal" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-icon">🗑️</div>
+            <div class="modal-title">Supprimer ?</div>
+            <div class="modal-text">Ce souvenir sera effacé définitivement. Tu es sûr ?</div>
+            <div class="modal-actions">
+                <button class="modal-btn modal-btn-cancel" onclick="closeModal()">Annuler</button>
+                <button class="modal-btn modal-btn-confirm" id="confirm-delete-btn">Supprimer</button>
+            </div>
         </div>
     </div>
 
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
     <!-- Storage removed -->
 
     <script src="firebase-config.js"></script>
@@ -36,17 +77,200 @@
             firebase.initializeApp(firebaseConfig);
         }
         const db = firebase.firestore();
+        const auth = firebase.auth();
 
-        // Simple Auth Check
+        // DOM Elements
+        const emailInput = document.getElementById('admin-email');
         const passInput = document.getElementById('admin-pass');
-        const form = document.getElementById('admin-form');
+        const loginForm = document.getElementById('login-form');
+        const adminForm = document.getElementById('admin-form');
+        const title = document.querySelector('.admin-title');
+
+        const btnLogin = document.getElementById('btn-login');
         
-        passInput.addEventListener('keyup', (e) => {
-            if (e.target.value === 'benji123') {
-                form.style.display = 'flex';
-                passInput.style.display = 'none';
+        // Sidebar Elements
+        const sidebar = document.getElementById('sidebar');
+        const sidebarOverlay = document.getElementById('sidebar-overlay');
+        const sidebarToggle = document.getElementById('sidebar-toggle');
+        const closeSidebarBtn = document.getElementById('close-sidebar');
+
+        // Sidebar Logic
+        function openSidebar() {
+            sidebar.classList.add('active');
+            sidebarOverlay.classList.add('active');
+        }
+
+        function closeSidebar() {
+            sidebar.classList.remove('active');
+            sidebarOverlay.classList.remove('active');
+        }
+
+        sidebarToggle.addEventListener('click', openSidebar);
+        closeSidebarBtn.addEventListener('click', closeSidebar);
+        sidebarOverlay.addEventListener('click', closeSidebar);
+
+        // Auth Logic
+        const cancelEditBtn = document.getElementById('cancel-edit');
+        const btnAdd = document.getElementById('btn-add');
+        let currentEditId = null;
+        
+        // Check if already logged in
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                showAdminInterface();
             }
         });
+
+        btnLogin.addEventListener('click', login);
+        passInput.addEventListener('keyup', (e) => { if (e.key === 'Enter') login(); });
+
+        function login() {
+            const email = emailInput.value;
+            const password = passInput.value;
+            
+            auth.signInWithEmailAndPassword(email, password)
+                .then(() => {
+                    showAdminInterface();
+                })
+                .catch((error) => {
+                    console.error(error);
+                    alert("Erreur de connexion : " + error.message);
+                });
+        }
+
+        function showAdminInterface() {
+            adminForm.style.display = 'flex';
+            loginForm.style.display = 'none';
+            title.innerText = 'Ajouter un souvenir';
+            sidebarToggle.style.display = 'flex'; // Show toggle button
+            loadAdminCards();
+        }
+
+        // Load Cards List
+        async function loadAdminCards() {
+            const listContainer = document.getElementById('cards-list');
+            listContainer.innerHTML = '<div style="text-align:center; color:#888;">Chargement...</div>';
+            
+            try {
+                const snapshot = await db.collection('cards').orderBy('createdAt', 'desc').get();
+                listContainer.innerHTML = '';
+                
+                if (snapshot.empty) {
+                    listContainer.innerHTML = '<div style="text-align:center; color:#888;">Aucun souvenir.</div>';
+                    return;
+                }
+
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const el = document.createElement('div');
+                    el.className = 'admin-list-item';
+                    el.innerHTML = `
+                        <img src="${data.image}" class="list-thumb">
+                        <div class="list-info">
+                            <div class="list-title">${data.title}</div>
+                            <div class="list-id">#${data.id || '?'}</div>
+                        </div>
+                        <div class="list-actions">
+                            <button class="btn-icon btn-edit" onclick="startEdit('${doc.id}')"><i class="fas fa-pen"></i></button>
+                            <button class="btn-icon btn-delete" onclick="deleteCard('${doc.id}')"><i class="fas fa-trash"></i></button>
+                        </div>
+                    `;
+                    listContainer.appendChild(el);
+                });
+            } catch (e) {
+                console.error(e);
+                listContainer.innerHTML = '<div style="text-align:center; color:#ff4b4b;">Erreur de chargement.</div>';
+            }
+        }
+
+        // Delete Card Logic
+        let cardToDeleteId = null;
+        const modal = document.getElementById('delete-modal');
+        const confirmBtn = document.getElementById('confirm-delete-btn');
+
+        window.deleteCard = (docId) => {
+            cardToDeleteId = docId;
+            modal.classList.add('active');
+        };
+
+        window.closeModal = () => {
+            modal.classList.remove('active');
+            cardToDeleteId = null;
+        };
+
+        confirmBtn.addEventListener('click', async () => {
+            if (!cardToDeleteId) return;
+            
+            const originalText = confirmBtn.innerText;
+            confirmBtn.innerText = '...';
+            
+            try {
+                // 1. Delete the card
+                await db.collection('cards').doc(cardToDeleteId).delete();
+                
+                // 2. Re-index remaining cards to ensure sequential IDs (1, 2, 3...)
+                const snapshot = await db.collection('cards').orderBy('createdAt', 'asc').get();
+                
+                if (!snapshot.empty) {
+                    const batch = db.batch();
+                    let index = 1;
+                    
+                    snapshot.forEach(doc => {
+                        const ref = db.collection('cards').doc(doc.id);
+                        batch.update(ref, { id: index });
+                        index++;
+                    });
+                    
+                    await batch.commit();
+                }
+
+                closeModal();
+                loadAdminCards();
+            } catch(e) {
+                console.error(e);
+                alert("Erreur: " + e.message);
+            } finally {
+                confirmBtn.innerText = originalText;
+            }
+        });
+
+        // Start Edit
+        window.startEdit = async (docId) => {
+            const doc = await db.collection('cards').doc(docId).get();
+            if(!doc.exists) return;
+            
+            const data = doc.data();
+            document.getElementById('card-title').value = data.title;
+            document.getElementById('card-text').value = data.text;
+            preview.src = data.image;
+            preview.style.display = 'block';
+            
+            // Keep existing image
+            compressedImageBase64 = data.image;
+            
+            currentEditId = docId;
+            btnAdd.innerText = 'Mettre à jour';
+            cancelEditBtn.style.display = 'block';
+            title.innerText = 'Modifier le souvenir';
+            
+            closeSidebar(); // Close sidebar to show form
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        };
+
+        // Cancel Edit
+        cancelEditBtn.addEventListener('click', resetForm);
+
+        function resetForm() {
+            document.getElementById('card-title').value = '';
+            document.getElementById('card-text').value = '';
+            fileInput.value = '';
+            preview.style.display = 'none';
+            btnAdd.innerText = 'Publier';
+            cancelEditBtn.style.display = 'none';
+            title.innerText = 'Gérer les souvenirs';
+            currentEditId = null;
+            compressedImageBase64 = null;
+        }
 
         // Image Preview & Compression Logic
         const fileInput = document.getElementById('card-image');
@@ -92,41 +316,46 @@
             }
         });
 
-        // Upload Logic (Direct to Firestore)
-        document.getElementById('btn-add').addEventListener('click', async () => {
-            const title = document.getElementById('card-title').value;
-            const text = document.getElementById('card-text').value;
+        // Upload / Update Logic
+        btnAdd.addEventListener('click', async () => {
+            const titleVal = document.getElementById('card-title').value;
+            const textVal = document.getElementById('card-text').value;
             const status = document.getElementById('status');
 
-            if (!title || !compressedImageBase64) {
+            if (!titleVal || !compressedImageBase64) {
                 alert('Il faut au moins un titre et une image !');
                 return;
             }
 
-            status.innerText = 'Envoi en cours...';
+            status.innerText = currentEditId ? 'Mise à jour...' : 'Envoi en cours...';
             
             try {
-                // Get current count to assign ID/Order
-                const snapshot = await db.collection('cards').get();
-                const count = snapshot.size;
+                if (currentEditId) {
+                    // Update existing
+                    await db.collection('cards').doc(currentEditId).update({
+                        title: titleVal,
+                        text: textVal,
+                        image: compressedImageBase64,
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    status.innerText = 'Modifié avec succès !';
+                } else {
+                    // Create new
+                    const snapshot = await db.collection('cards').get();
+                    const count = snapshot.size;
 
-                // Save directly to Firestore (No Storage bucket needed)
-                await db.collection('cards').add({
-                    id: count + 1,
-                    title: title,
-                    text: text,
-                    image: compressedImageBase64, // Storing the image string directly
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-
-                status.innerText = 'Carte ajoutée avec succès !';
+                    await db.collection('cards').add({
+                        id: count + 1,
+                        title: titleVal,
+                        text: textVal,
+                        image: compressedImageBase64,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    status.innerText = 'Ajouté avec succès !';
+                }
                 
-                // Reset form
-                document.getElementById('card-title').value = '';
-                document.getElementById('card-text').value = '';
-                fileInput.value = '';
-                preview.style.display = 'none';
-                compressedImageBase64 = null;
+                resetForm();
+                loadAdminCards();
                 
             } catch (error) {
                 console.error(error);
