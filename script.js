@@ -155,6 +155,10 @@ function initSwipe(card, nextCard) {
 
         if (Math.abs(currentX) > threshold) {
             // Swipe success
+            if (navigator.vibrate) {
+                navigator.vibrate(15); // Haptic feedback
+            }
+
             const direction = currentX > 0 ? 1 : -1;
             const endX = direction * (window.innerWidth + 200);
             

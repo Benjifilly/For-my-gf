@@ -18,7 +18,7 @@
 
 body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    background-color: var(--bg);
+    background-color: #000;
     color: var(--text);
     display: flex;
     justify-content: center;
@@ -26,6 +26,44 @@ body {
     height: 100vh;
     overflow: hidden;
     overscroll-behavior-y: contain;
+    
+    /* Aurora Borealis Base */
+    background: linear-gradient(to bottom, #020111 0%, #0a0a2e 100%);
+    position: relative;
+}
+
+/* Aurora Layers */
+body::before, body::after {
+    content: "";
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    z-index: -1;
+    filter: blur(80px);
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+body::before {
+    background: 
+        radial-gradient(circle at 50% 50%, rgba(0, 255, 136, 0.15), transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(0, 195, 255, 0.15), transparent 40%);
+    animation: aurora-move 20s ease-in-out infinite alternate;
+}
+
+body::after {
+    background: 
+        radial-gradient(circle at 20% 80%, rgba(140, 0, 255, 0.15), transparent 50%),
+        radial-gradient(circle at 70% 60%, rgba(0, 255, 170, 0.1), transparent 40%);
+    animation: aurora-move 25s ease-in-out infinite alternate-reverse;
+}
+
+@keyframes aurora-move {
+    0% { transform: translate(0, 0) scale(1); }
+    50% { transform: translate(-2%, 2%) scale(1.05); }
+    100% { transform: translate(2%, -2%) scale(1); }
 }
 
 #app {
@@ -447,12 +485,46 @@ body {
     border: 1px solid rgba(255,255,255,0.1);
 }
 
-/* Empty State */
-.empty-message {
-    text-align: center;
-    padding: 40px;
-    opacity: 0;
-    animation: fadeIn 1s forwards;
+/* Cropper Modal */
+.cropper-overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: #000;
+    z-index: 2000;
+    display: none;
+    flex-direction: column;
+}
+
+.cropper-container-wrapper {
+    flex: 1;
+    position: relative;
+    background: #111;
+    overflow: hidden;
+}
+
+.cropper-controls {
+    padding: 20px;
+    background: #1a1a1a;
+    display: flex;
+    gap: 15px;
+    justify-content: space-between;
+}
+
+.btn-crop-cancel {
+    background: #333;
+    color: white;
+    flex: 1;
+}
+
+.btn-crop-confirm {
+    background: white;
+    color: black;
+    flex: 1;
+}
+
+/* Override CropperJS default to fit dark theme if needed */
+.cropper-view-box, .cropper-face {
+    border-radius: 0; /* Optional: if you want rounded crop preview */
 }
 
 .empty-title {

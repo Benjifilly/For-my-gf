@@ -7,9 +7,21 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="modal.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
 </head>
 <body class="admin-body">
     
+    <!-- Cropper Modal -->
+    <div id="cropper-modal" class="cropper-overlay">
+        <div class="cropper-container-wrapper">
+            <img id="cropper-image" style="max-width: 100%;">
+        </div>
+        <div class="cropper-controls">
+            <button id="btn-crop-cancel" class="admin-btn btn-crop-cancel">Annuler</button>
+            <button id="btn-crop-confirm" class="admin-btn btn-crop-confirm">Valider</button>
+        </div>
+    </div>
+
     <!-- Sidebar Toggle -->
     <button id="sidebar-toggle" class="sidebar-toggle" style="display:none;">
         <i class="fas fa-list"></i>
@@ -42,7 +54,12 @@
                 <div id="card-text" class="admin-input" contenteditable="true" placeholder="Description..."></div>
                 
                 <input type="file" id="card-image" class="admin-input" accept="image/*">
-                <img id="preview" class="preview-img">
+                <div style="position: relative;">
+                    <img id="preview" class="preview-img">
+                    <button id="btn-recrop" class="admin-btn" style="display:none; margin-top: 5px; background: #333; color: white; font-size: 0.9rem; padding: 10px;">
+                        <i class="fas fa-crop-alt"></i> Recadrer l'image actuelle
+                    </button>
+                </div>
                 
                 <div style="display:flex; gap:10px;">
                     <button id="btn-add" class="admin-btn" style="flex:1;">Publier</button>
@@ -70,6 +87,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
     <!-- Storage removed -->
 
     <script src="firebase-config.js"></script>
@@ -247,6 +265,9 @@
             preview.src = data.image;
             preview.style.display = 'block';
             
+            // Show recrop button
+            document.getElementById('btn-recrop').style.display = 'block';
+            
             // Keep existing image
             compressedImageBase64 = data.image;
             
@@ -267,6 +288,7 @@
             document.getElementById('card-text').innerHTML = ''; // Reset innerHTML
             fileInput.value = '';
             preview.style.display = 'none';
+            document.getElementById('btn-recrop').style.display = 'none';
             btnAdd.innerText = 'Publier';
             cancelEditBtn.style.display = 'none';
             title.innerText = 'Gérer les souvenirs';
@@ -304,43 +326,88 @@
         const preview = document.getElementById('preview');
         let compressedImageBase64 = null;
         
+        // Cropper Variables
+        let cropper = null;
+        const cropperModal = document.getElementById('cropper-modal');
+        const cropperImage = document.getElementById('cropper-image');
+        const btnCropConfirm = document.getElementById('btn-crop-confirm');
+        const btnCropCancel = document.getElementById('btn-crop-cancel');
+        const btnRecrop = document.getElementById('btn-recrop');
+
+        // Function to open cropper with an image source
+        function openCropper(imageSrc) {
+            cropperImage.src = imageSrc;
+            cropperModal.style.display = 'flex';
+            
+            if (cropper) {
+                cropper.destroy();
+            }
+            
+            cropper = new Cropper(cropperImage, {
+                aspectRatio: 340 / 600,
+                viewMode: 1,
+                dragMode: 'move',
+                autoCropArea: 1,
+                restore: false,
+                guides: true,
+                center: true,
+                highlight: false,
+                cropBoxMovable: true,
+                cropBoxResizable: true,
+                toggleDragModeOnDblclick: false,
+            });
+        }
+
+        // Recrop button handler
+        btnRecrop.addEventListener('click', () => {
+            if (preview.src) {
+                openCropper(preview.src);
+            }
+        });
+
         fileInput.addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (file) {
                 const reader = new FileReader();
                 reader.onload = function(event) {
-                    // Create an image object to handle resizing
-                    const img = new Image();
-                    img.onload = function() {
-                        // Canvas for compression
-                        const canvas = document.createElement('canvas');
-                        const ctx = canvas.getContext('2d');
-                        
-                        // Max dimensions (limit to 800px width to keep DB size low)
-                        const MAX_WIDTH = 800;
-                        let width = img.width;
-                        let height = img.height;
-                        
-                        if (width > MAX_WIDTH) {
-                            height *= MAX_WIDTH / width;
-                            width = MAX_WIDTH;
-                        }
-                        
-                        canvas.width = width;
-                        canvas.height = height;
-                        ctx.drawImage(img, 0, 0, width, height);
-                        
-                        // Compress to JPEG 70% quality
-                        compressedImageBase64 = canvas.toDataURL('image/jpeg', 0.7);
-                        
-                        // Show preview
-                        preview.src = compressedImageBase64;
-                        preview.style.display = 'block';
-                    }
-                    img.src = event.target.result;
+                    openCropper(event.target.result);
                 }
                 reader.readAsDataURL(file);
             }
+            fileInput.value = '';
+        });
+
+        btnCropCancel.addEventListener('click', () => {
+            cropperModal.style.display = 'none';
+            if (cropper) {
+                cropper.destroy();
+                cropper = null;
+            }
+        });
+
+        btnCropConfirm.addEventListener('click', () => {
+            if (!cropper) return;
+            
+            // Get cropped canvas
+            const canvas = cropper.getCroppedCanvas({
+                width: 680, // 2x for retina
+                height: 1200,
+                imageSmoothingEnabled: true,
+                imageSmoothingQuality: 'high',
+            });
+            
+            // Compress to JPEG
+            compressedImageBase64 = canvas.toDataURL('image/jpeg', 0.8);
+            
+            // Show preview
+            preview.src = compressedImageBase64;
+            preview.style.display = 'block';
+            btnRecrop.style.display = 'block'; // Show recrop button for the new image
+            
+            // Close modal
+            cropperModal.style.display = 'none';
+            cropper.destroy();
+            cropper = null;
         });
 
         // Upload / Update Logic
