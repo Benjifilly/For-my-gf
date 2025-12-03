@@ -1,0 +1,177 @@
+:root {
+    --card-width: 340px;
+    --card-height: 600px;
+    --bg: #0f0f11; /* Dark modern background */
+    --text: #ffffff;
+    --glass: rgba(255, 255, 255, 0.1);
+    --glass-border: rgba(255, 255, 255, 0.2);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background-color: var(--bg);
+    color: var(--text);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    overflow: hidden;
+    overscroll-behavior-y: contain;
+}
+
+#app {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Counter */
+.counter {
+    position: absolute;
+    top: 40px;
+    font-size: 0.9rem;
+    letter-spacing: 2px;
+    opacity: 0.6;
+    z-index: 10;
+    font-weight: 300;
+}
+
+.card-container {
+    position: relative;
+    width: var(--card-width);
+    height: var(--card-height);
+    perspective: 1500px;
+    max-width: 90vw;
+    max-height: 80vh;
+}
+
+.card {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: #1a1a1a;
+    border-radius: 30px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transform-origin: 50% 100%;
+    will-change: transform, opacity;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    border: 1px solid var(--glass-border);
+}
+
+.card-image-container {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+.card-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    pointer-events: none;
+}
+
+/* Gradient overlay for text readability */
+.card-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 50%;
+    background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
+    pointer-events: none;
+}
+
+.card-content {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    padding: 30px;
+    pointer-events: none;
+}
+
+.card-title {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 10px;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+}
+
+.card-text {
+    font-size: 1.1rem;
+    line-height: 1.5;
+    opacity: 0.9;
+    font-weight: 400;
+    text-shadow: 0 1px 5px rgba(0,0,0,0.3);
+}
+
+.loading {
+    position: absolute;
+    color: white;
+    font-size: 1.2rem;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 0.5; }
+    50% { opacity: 1; }
+    100% { opacity: 0.5; }
+}
+
+/* Admin specific styles */
+.admin-container {
+    width: 100%;
+    max-width: 500px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    height: 100vh;
+    overflow-y: auto;
+}
+
+.admin-input {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    padding: 15px;
+    border-radius: 12px;
+    color: white;
+    font-size: 1rem;
+    width: 100%;
+}
+
+.admin-btn {
+    background: white;
+    color: black;
+    border: none;
+    padding: 15px;
+    border-radius: 12px;
+    font-weight: bold;
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+.preview-img {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    border-radius: 12px;
+    background: #333;
+    display: none;
+}
