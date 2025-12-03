@@ -237,6 +237,13 @@ body::after {
     text-shadow: 0 2px 10px rgba(0,0,0,0.3);
 }
 
+.card-title img {
+    height: 1.2em;
+    width: auto;
+    vertical-align: middle;
+    margin: 0 4px;
+}
+
 .card-text {
     font-size: 1.1rem;
     line-height: 1.5;
