@@ -113,6 +113,7 @@ body::after {
     box-shadow: 0 20px 50px rgba(0,0,0,0.5);
     border: 1px solid var(--glass-border);
     perspective: 1000px; /* Enable 3D space for children */
+    touch-action: none; /* Disable browser zoom/pan to improve touch response */
 }
 
 /* Flip Card Styles */
@@ -635,6 +636,14 @@ body::after {
     z-index: 9999;
     animation: explode 2s ease-out forwards;
     will-change: transform, opacity;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.emoji-particle img {
+    width: 3rem; /* Bigger size for Memojis in explosion */
+    height: auto;
 }
 
 /* Scratch Card Canvas */

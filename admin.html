@@ -48,7 +48,8 @@
             </div>
             
             <div id="admin-form" style="display:none; flex-direction: column; gap: 15px;">
-                <input type="text" id="card-title" class="admin-input" placeholder="Titre (ex: Notre voyage)">
+                <!-- Title converted to contenteditable for Memojis -->
+                <div id="card-title" class="admin-input" contenteditable="true" placeholder="Titre (ex: Notre voyage 😽)"></div>
                 
                 <!-- Rich Text Div for Stickers/Emojis -->
                 <div id="card-text" class="admin-input" contenteditable="true" placeholder="Description..."></div>
@@ -58,7 +59,8 @@
                     <input type="checkbox" id="is-special" style="width: 20px; height: 20px;">
                     <label for="is-special" style="color: white;">Carte Spéciale (Explosion)</label>
                 </div>
-                <input type="text" id="explosion-emojis" class="admin-input" placeholder="Emojis (ex: ❤️🎉🔥) - séparés ou ensemble" style="display: none;">
+                <!-- Explosion input converted to contenteditable -->
+                <div id="explosion-emojis" class="admin-input" contenteditable="true" placeholder="Colle tes Memojis/Emojis ici..." style="display: none;"></div>
 
                 <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
                     <input type="checkbox" id="is-scratch" style="width: 20px; height: 20px;">
@@ -278,18 +280,18 @@
             if(!doc.exists) return;
             
             const data = doc.data();
-            document.getElementById('card-title').value = data.title;
+            document.getElementById('card-title').innerHTML = data.title; // Use innerHTML
             document.getElementById('card-text').innerHTML = data.text; // Use innerHTML for rich text
             
             // Load Special Card Data
             if (data.isSpecial) {
                 document.getElementById('is-special').checked = true;
                 document.getElementById('explosion-emojis').style.display = 'block';
-                document.getElementById('explosion-emojis').value = data.explosionEmojis || '';
+                document.getElementById('explosion-emojis').innerHTML = data.explosionEmojis || ''; // Use innerHTML
             } else {
                 document.getElementById('is-special').checked = false;
                 document.getElementById('explosion-emojis').style.display = 'none';
-                document.getElementById('explosion-emojis').value = '';
+                document.getElementById('explosion-emojis').innerHTML = '';
             }
 
             if (data.isScratch) {
@@ -345,12 +347,12 @@
         });
 
         function resetForm() {
-            document.getElementById('card-title').value = '';
+            document.getElementById('card-title').innerHTML = ''; // Reset innerHTML
             document.getElementById('card-text').innerHTML = ''; // Reset innerHTML
             isSpecialCheckbox.checked = false;
             isScratchCheckbox.checked = false;
             isFlipCheckbox.checked = false;
-            explosionEmojisInput.value = '';
+            explosionEmojisInput.innerHTML = ''; // Reset innerHTML
             explosionEmojisInput.style.display = 'none';
             flipTextInput.value = '';
             flipTextInput.style.display = 'none';
@@ -365,29 +367,35 @@
             compressedImageBase64 = null;
         }
 
-        // Handle paste for images (Memojis/Stickers) in description
-        const cardTextDiv = document.getElementById('card-text');
+        // Handle paste for images (Memojis/Stickers) in description, title, and explosion
+        const richInputs = [
+            document.getElementById('card-text'),
+            document.getElementById('card-title'),
+            document.getElementById('explosion-emojis')
+        ];
         
-        cardTextDiv.addEventListener('paste', function(e) {
-            const items = (e.clipboardData || e.originalEvent.clipboardData).items;
-            let blob = null;
-            
-            for (let i = 0; i < items.length; i++) {
-                if (items[i].type.indexOf("image") === 0) {
-                    blob = items[i].getAsFile();
-                    break;
+        richInputs.forEach(input => {
+            input.addEventListener('paste', function(e) {
+                const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+                let blob = null;
+                
+                for (let i = 0; i < items.length; i++) {
+                    if (items[i].type.indexOf("image") === 0) {
+                        blob = items[i].getAsFile();
+                        break;
+                    }
                 }
-            }
-            
-            if (blob) {
-                e.preventDefault();
-                const reader = new FileReader();
-                reader.onload = function(event) {
-                    const img = `<img src="${event.target.result}">`;
-                    document.execCommand('insertHTML', false, img);
-                };
-                reader.readAsDataURL(blob);
-            }
+                
+                if (blob) {
+                    e.preventDefault();
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        const img = `<img src="${event.target.result}">`;
+                        document.execCommand('insertHTML', false, img);
+                    };
+                    reader.readAsDataURL(blob);
+                }
+            });
         });
 
         // Image Preview & Compression Logic
@@ -481,12 +489,12 @@
 
         // Upload / Update Logic
         btnAdd.addEventListener('click', async () => {
-            const titleVal = document.getElementById('card-title').value;
+            const titleVal = document.getElementById('card-title').innerHTML; // Get innerHTML
             const textVal = document.getElementById('card-text').innerHTML; // Get innerHTML
             const isSpecial = document.getElementById('is-special').checked;
             const isScratch = document.getElementById('is-scratch').checked;
             const isFlip = document.getElementById('is-flip').checked;
-            const explosionEmojis = document.getElementById('explosion-emojis').value;
+            const explosionEmojis = document.getElementById('explosion-emojis').innerHTML; // Get innerHTML
             const flipText = document.getElementById('flip-text').value;
             const status = document.getElementById('status');
 

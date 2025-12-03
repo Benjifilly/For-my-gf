@@ -153,15 +153,40 @@ function createCardElement(data) {
 
         // Double Tap Logic
         let lastTap = 0;
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let hasMoved = false;
+
+        el.addEventListener('touchstart', (e) => {
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+            hasMoved = false;
+        }, { passive: true });
+
+        el.addEventListener('touchmove', (e) => {
+            const x = e.touches[0].clientX;
+            const y = e.touches[0].clientY;
+            // If moved more than 10px, it's a swipe, not a tap
+            if (Math.abs(x - touchStartX) > 10 || Math.abs(y - touchStartY) > 10) {
+                hasMoved = true;
+            }
+        }, { passive: true });
+
         el.addEventListener('touchend', (e) => {
+            if (hasMoved) return; // Ignore if it was a swipe
+
             const currentTime = new Date().getTime();
             const tapLength = currentTime - lastTap;
-            if (tapLength < 300 && tapLength > 0) {
+            
+            // 400ms allows for a more relaxed double tap
+            if (tapLength < 400 && tapLength > 0) {
+                e.preventDefault();
                 el.classList.toggle('is-flipped');
                 if (navigator.vibrate) navigator.vibrate(10);
-                e.preventDefault(); // Prevent zoom
+                lastTap = 0; // Reset
+            } else {
+                lastTap = currentTime;
             }
-            lastTap = currentTime;
         });
         
         // Desktop double click
@@ -572,18 +597,33 @@ function nextCardFunc() {
 function triggerEmojiExplosion(emojis) {
     if (!emojis) return;
     
-    // Split emojis if they are separated by spaces, otherwise treat as string or split by char if no spaces
-    // Simple approach: if string contains space, split by space. Else split by character? 
-    // Actually, let's just use the string as is if it's short, or split if it looks like a list.
-    // Better: Array.from(emojis) handles unicode characters correctly.
+    // Parse HTML string to handle both text emojis and <img> tags (Memojis)
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = emojis;
     
-    let emojiList = [];
-    if (emojis.includes(' ')) {
-        emojiList = emojis.split(' ').filter(e => e.trim() !== '');
-    } else {
-        // Use Intl.Segmenter if available for better emoji splitting, or Array.from
-        emojiList = Array.from(emojis);
-    }
+    let particles = [];
+    
+    // Extract all child nodes
+    tempDiv.childNodes.forEach(node => {
+        if (node.nodeType === Node.TEXT_NODE) {
+            // Split text into characters (emojis)
+            const text = node.textContent;
+            // Use Array.from to correctly split unicode emojis
+            const chars = Array.from(text).filter(c => c.trim() !== '');
+            particles.push(...chars);
+        } else if (node.nodeName === 'IMG') {
+            // It's an image (Memoji)
+            particles.push(node.outerHTML);
+        } else {
+            // Other elements (span, etc), take text content or outerHTML?
+            // Let's take outerHTML to preserve styles if any, or just text
+            if (node.textContent.trim() !== '') {
+                particles.push(node.outerHTML);
+            }
+        }
+    });
+
+    if (particles.length === 0) return;
 
     const container = document.body;
     const particleCount = 50; // Number of particles
@@ -591,7 +631,10 @@ function triggerEmojiExplosion(emojis) {
     for (let i = 0; i < particleCount; i++) {
         const el = document.createElement('div');
         el.className = 'emoji-particle';
-        el.innerText = emojiList[Math.floor(Math.random() * emojiList.length)];
+        
+        // Pick random particle content
+        const content = particles[Math.floor(Math.random() * particles.length)];
+        el.innerHTML = content; // Use innerHTML to support <img> tags
         
         // Random starting position near center/bottom
         const startX = window.innerWidth / 2 + (Math.random() - 0.5) * 100;
