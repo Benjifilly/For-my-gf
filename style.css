@@ -69,6 +69,35 @@ body::after {
     100% { transform: translate(2%, -2%) scale(1); }
 }
 
+/* Stars Background */
+.stars-container {
+    position: fixed;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    z-index: -2; /* Behind aurora */
+    pointer-events: none;
+    overflow: hidden;
+    background: transparent;
+    will-change: transform;
+}
+
+.star {
+    position: absolute;
+    background: white;
+    border-radius: 50%;
+    opacity: 0;
+    animation: twinkle var(--duration) ease-in-out infinite;
+    box-shadow: 0 0 2px rgba(255, 255, 255, 0.8);
+}
+
+@keyframes twinkle {
+    0% { opacity: 0; transform: scale(0.5); }
+    50% { opacity: var(--opacity); transform: scale(1); }
+    100% { opacity: 0; transform: scale(0.5); }
+}
+
 #app {
     position: relative;
     width: 100%;
@@ -529,6 +558,26 @@ body::after {
 .btn-delete:hover {
     background: #ff4b4b;
     color: white;
+}
+
+.btn-move {
+    width: 30px;
+    height: 19px;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.btn-move:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
+.btn-move:disabled {
+    opacity: 0.2;
+    cursor: default;
 }
 
 .admin-input {

@@ -198,6 +198,7 @@ function createCardElement(data) {
         el.innerHTML = `
             <div class="card-image-container">
                 <img src="${data.image}" class="card-image" draggable="false">
+                ${data.video ? `<video src="${data.video}" class="card-video" loop muted playsinline style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; z-index:2;"></video>` : ''}
                 <div class="card-overlay"></div>
             </div>
             <div class="card-content">
@@ -205,6 +206,45 @@ function createCardElement(data) {
                 <div class="card-text">${data.text}</div>
             </div>
         `;
+
+        // Video Logic (Hover PC / Long Press Mobile)
+        if (data.video) {
+            const videoEl = el.querySelector('.card-video');
+            const imgEl = el.querySelector('.card-image');
+            let pressTimer;
+
+            // PC Hover
+            el.addEventListener('mouseenter', () => {
+                videoEl.style.display = 'block';
+                videoEl.play().catch(e => console.log("Autoplay prevented", e));
+            });
+
+            el.addEventListener('mouseleave', () => {
+                videoEl.pause();
+                videoEl.currentTime = 0;
+                videoEl.style.display = 'none';
+            });
+
+            // Mobile Long Press
+            el.addEventListener('touchstart', (e) => {
+                pressTimer = setTimeout(() => {
+                    videoEl.style.display = 'block';
+                    videoEl.play();
+                    if (navigator.vibrate) navigator.vibrate(20); // Haptic feedback
+                }, 500); // 500ms long press
+            }, { passive: true });
+
+            el.addEventListener('touchend', () => {
+                clearTimeout(pressTimer);
+                videoEl.pause();
+                videoEl.currentTime = 0;
+                videoEl.style.display = 'none';
+            });
+
+            el.addEventListener('touchmove', () => {
+                clearTimeout(pressTimer); // Cancel if scrolling/swiping
+            }, { passive: true });
+        }
     }
 
     if (data.isScratch) {
@@ -367,7 +407,9 @@ function initScratch(canvas, data) {
 
 function initSwipe(card, nextCard, thirdCard, fourthCard) {
     let startX = 0;
+    let startY = 0;
     let currentX = 0;
+    let currentY = 0;
     let isDragging = false;
     const threshold = window.innerWidth * 0.25; // 25% of screen width to trigger
 
@@ -380,6 +422,7 @@ function initSwipe(card, nextCard, thirdCard, fourthCard) {
     const handleStart = (e) => {
         isDragging = true;
         startX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
+        startY = e.type.includes('mouse') ? e.clientY : e.touches[0].clientY;
         
         // Reset shake logic
         shakeCount = 0;
@@ -400,8 +443,10 @@ function initSwipe(card, nextCard, thirdCard, fourthCard) {
         if (e.type === 'touchmove') e.preventDefault();
 
         const clientX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
-        const x = clientX;
-        currentX = x - startX;
+        const clientY = e.type.includes('mouse') ? e.clientY : e.touches[0].clientY;
+        
+        currentX = clientX - startX;
+        currentY = clientY - startY;
         
         // --- Shake Detection Logic ---
         const distSinceLastShake = clientX - lastShakeX;
@@ -423,11 +468,12 @@ function initSwipe(card, nextCard, thirdCard, fourthCard) {
         // Smoother rotation based on X
         const rotate = currentX * 0.05;
         
-        // Apply transform to active card
-        card.style.transform = `translateX(${currentX}px) rotate(${rotate}deg)`;
+        // Apply transform to active card (X and Y)
+        card.style.transform = `translate(${currentX}px, ${currentY}px) rotate(${rotate}deg)`;
 
-        // Parallax effect for the background cards
-        const progress = Math.min(Math.abs(currentX) / (window.innerWidth), 1);
+        // Parallax effect for the background cards (based on distance from center)
+        const distance = Math.sqrt(currentX*currentX + currentY*currentY);
+        const progress = Math.min(distance / (window.innerWidth), 1);
         
         if (nextCard) {
             // Next card moves to front (Scale 0.95 -> 1, Y 10 -> 0, Opacity 0.8 -> 1)
@@ -494,20 +540,25 @@ function initSwipe(card, nextCard, thirdCard, fourthCard) {
             }, 600); // Wait a bit longer for the animation
             
             currentX = 0;
+            currentY = 0;
             return;
         }
         // -----------------------------
 
-        if (Math.abs(currentX) > threshold) {
+        const distance = Math.sqrt(currentX*currentX + currentY*currentY);
+
+        if (distance > threshold) {
             // Swipe success
             if (navigator.vibrate) {
                 navigator.vibrate(15); // Haptic feedback
             }
 
-            const direction = currentX > 0 ? 1 : -1;
-            const endX = direction * (window.innerWidth + 200);
+            // Calculate throw direction
+            const velocity = 1.5;
+            const endX = currentX * velocity + (Math.sign(currentX) * window.innerWidth);
+            const endY = currentY * velocity + (Math.sign(currentY) * window.innerHeight);
             
-            card.style.transform = `translateX(${endX}px) rotate(${direction * 20}deg)`;
+            card.style.transform = `translate(${endX}px, ${endY}px) rotate(${currentX * 0.05}deg)`;
             
             animateBackgroundCards();
 
@@ -516,7 +567,7 @@ function initSwipe(card, nextCard, thirdCard, fourthCard) {
             }, 300);
         } else {
             // Reset (Cancel swipe)
-            card.style.transform = 'translateX(0) rotate(0)';
+            card.style.transform = 'translate(0, 0) rotate(0)';
             
             if (nextCard) {
                 nextCard.style.transform = 'scale(0.95) translateY(10px)';
@@ -537,6 +588,7 @@ function initSwipe(card, nextCard, thirdCard, fourthCard) {
             }
         }
         currentX = 0;
+        currentY = 0;
     };
 
     // Helper to animate background cards to front
@@ -705,3 +757,75 @@ function checkIOSInstall() {
 
 // Run the check
 checkIOSInstall();
+
+// --- Nuit Étoilée (Parallaxe) ---
+function createStars() {
+    const container = document.createElement('div');
+    container.className = 'stars-container';
+    document.body.prepend(container); // Put it at the start of body so it's behind
+
+    const starCount = 100; // More stars for realism but small
+
+    for (let i = 0; i < starCount; i++) {
+        const star = document.createElement('div');
+        star.className = 'star';
+        
+        // Random position
+        const x = Math.random() * 100;
+        const y = Math.random() * 100;
+        
+        // Random size (small for realism)
+        const size = Math.random() * 2 + 1.5; // 1.5px to 3.5px
+        
+        // Random duration and delay
+        const duration = Math.random() * 3 + 2; // 2s to 5s
+        const delay = Math.random() * 5;
+        const opacity = Math.random() * 0.5 + 0.3; // Slightly more visible
+
+        star.style.left = `${x}%`;
+        star.style.top = `${y}%`;
+        star.style.width = `${size}px`;
+        star.style.height = `${size}px`;
+        star.style.setProperty('--duration', `${duration}s`);
+        star.style.setProperty('--opacity', opacity);
+        star.style.animationDelay = `${delay}s`;
+
+        container.appendChild(star);
+    }
+
+    // Parallax Logic
+    let currentX = 0;
+    let currentY = 0;
+    let targetX = 0;
+    let targetY = 0;
+
+    // Smooth interpolation
+    function animate() {
+        currentX += (targetX - currentX) * 0.05;
+        currentY += (targetY - currentY) * 0.05;
+        
+        container.style.transform = `translate(${currentX}px, ${currentY}px)`;
+        requestAnimationFrame(animate);
+    }
+    animate();
+
+    // Gyroscope (iOS/Mobile)
+    window.addEventListener('deviceorientation', (e) => {
+        // Gamma: Left/Right (-90 to 90)
+        // Beta: Front/Back (-180 to 180)
+        if (e.gamma !== null && e.beta !== null) {
+            // Limit range and smooth
+            targetX = e.gamma * 2; // Multiplier for movement range
+            targetY = e.beta * 2;
+        }
+    });
+
+    // Mouse (Desktop fallback)
+    document.addEventListener('mousemove', (e) => {
+        targetX = (e.clientX - window.innerWidth / 2) * 0.05;
+        targetY = (e.clientY - window.innerHeight / 2) * 0.05;
+    });
+}
+
+// Call it
+createStars();

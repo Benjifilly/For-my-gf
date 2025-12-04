@@ -22,6 +22,67 @@
         </div>
     </div>
 
+    <!-- Video Editor Modal -->
+    <div id="video-editor-modal" class="cropper-overlay" style="display:none;">
+        <div class="cropper-container-wrapper" style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:20px; background:#000;">
+            <h3 style="color:white; margin-bottom:15px;">Éditeur Vidéo (Max 5-10s)</h3>
+            
+            <div style="position:relative; width:100%; max-width:300px; aspect-ratio: 340/600; background:#111; border-radius:10px; overflow:hidden;">
+                <video id="editor-video-preview" style="width:100%; height:100%; object-fit:contain;" playsinline muted></video>
+                <div id="processing-overlay" style="position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); display:none; flex-direction:column; align-items:center; justify-content:center; z-index:10;">
+                    <div class="loading" style="position:relative; margin-bottom:10px;">⏳</div>
+                    <div style="color:white;">Compression... <span id="progress-percent">0%</span></div>
+                </div>
+            </div>
+            
+            <!-- Trimming Controls -->
+            <div style="width:100%; max-width:340px; margin-top:20px; background:#1a1a1a; padding:15px; border-radius:15px;">
+                <div style="display:flex; justify-content:space-between; color:#aaa; font-size:0.8rem; margin-bottom:10px;">
+                    <span>Début: <b id="lbl-start" style="color:white;">0s</b></span>
+                    <span>Durée: <b id="lbl-duration" style="color:#4dabf7;">0s</b></span>
+                    <span>Fin: <b id="lbl-end" style="color:white;">0s</b></span>
+                </div>
+                
+                <div style="text-align:center; margin-bottom:10px; font-size:0.9rem; color:#aaa;">
+                    Estimation: <b id="lbl-size">0 KB</b>
+                </div>
+                
+                <div style="position:relative; height:30px; margin-bottom:10px;">
+                    <!-- Dual Slider Simulation -->
+                    <input type="range" id="trim-start" min="0" max="100" value="0" step="0.1" style="position:absolute; width:100%; pointer-events:none; opacity:0.5; z-index:2;">
+                    <input type="range" id="trim-end" min="0" max="100" value="100" step="0.1" style="position:absolute; width:100%; pointer-events:none; opacity:0.5; z-index:2;">
+                    <div style="position:absolute; top:12px; left:0; width:100%; height:4px; background:#333; border-radius:2px;"></div>
+                </div>
+                
+                <!-- New Controls -->
+                <div style="margin-top:15px; border-top:1px solid #333; padding-top:10px;">
+                    <button id="btn-define-crop" class="admin-btn" style="width:100%; background:#333; margin-bottom:10px; font-size:0.8rem;">✂️ Définir le recadrage</button>
+                    
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+                        <label style="color:white; font-size:0.9rem; display:flex; align-items:center; gap:5px;">
+                            <input type="checkbox" id="chk-compress" checked> Compresser
+                        </label>
+                        <select id="sel-quality" style="background:#333; color:white; border:none; padding:5px; border-radius:5px; font-size:0.8rem;">
+                            <option value="250000">Faible (250kbps)</option>
+                            <option value="564000" selected>Moyenne (500kbps)</option>
+                            <option value="1000000">Haute (1Mbps)</option>
+                            <option value="2500000">Max (2.5Mbps)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="text-align:center; font-size:0.75rem; color:#666; margin-top:5px;">
+                    ⚠️ La vidéo sera compressée (qualité réduite) pour tenir dans la base de données.
+                </div>
+            </div>
+
+            <div class="cropper-controls" style="width:100%; max-width:340px; margin-top:10px;">
+                <button id="btn-video-cancel" class="admin-btn btn-crop-cancel">Annuler</button>
+                <button id="btn-video-save" class="admin-btn btn-crop-confirm">Compresser & Sauvegarder</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Sidebar Toggle -->
     <button id="sidebar-toggle" class="sidebar-toggle" style="display:none;">
         <i class="fas fa-list"></i>
@@ -73,9 +134,16 @@
                 </div>
                 <input type="text" id="flip-text" class="admin-input" placeholder="Texte au dos de la carte..." style="display: none;">
 
-                <input type="file" id="card-image" class="admin-input" accept="image/*">
+                <!-- Video Input -->
+                <div style="border: 1px dashed rgba(255,255,255,0.2); padding: 10px; border-radius: 10px; margin-bottom: 10px;">
+                    <label style="color: #aaa; font-size: 0.9rem; display: block; margin-bottom: 5px;">Image ou Vidéo (Max 800ko pour vidéo)</label>
+                    <input type="file" id="card-image" class="admin-input" accept="image/*,video/mp4,image/gif">
+                </div>
+
                 <div style="position: relative;">
                     <img id="preview" class="preview-img">
+                    <video id="preview-video" class="preview-img" style="display:none;" loop muted playsinline></video>
+                    
                     <button id="btn-recrop" class="admin-btn" style="display:none; margin-top: 5px; background: #333; color: white; font-size: 0.9rem; padding: 10px;">
                         <i class="fas fa-crop-alt"></i> Recadrer l'image actuelle
                     </button>
@@ -192,7 +260,7 @@
             listContainer.innerHTML = '<div style="text-align:center; color:#888;">Chargement...</div>';
             
             try {
-                const snapshot = await db.collection('cards').orderBy('createdAt', 'desc').get();
+                const snapshot = await db.collection('cards').orderBy('id', 'asc').get();
                 listContainer.innerHTML = '';
                 
                 if (snapshot.empty) {
@@ -200,17 +268,37 @@
                     return;
                 }
 
+                const totalCards = snapshot.size;
+
                 snapshot.forEach(doc => {
                     const data = doc.data();
                     const el = document.createElement('div');
                     el.className = 'admin-list-item';
+                    el.setAttribute('data-doc-id', doc.id);
+                    
+                    // Determine if buttons should be disabled
+                    const isFirst = data.id === 1;
+                    const isLast = data.id === totalCards;
+                    
+                    // Feature Icons
+                    let icons = '';
+                    if (data.isSpecial) icons += '<i class="fas fa-bomb" style="color: #ff6b6b; margin-right: 8px;" title="Explosion"></i>';
+                    if (data.isScratch) icons += '<i class="fas fa-eraser" style="color: #adb5bd; margin-right: 8px;" title="À Gratter"></i>';
+                    if (data.isFlip) icons += '<i class="fas fa-rotate" style="color: #4dabf7; margin-right: 8px;" title="Retourner"></i>';
+                    if (data.video) icons += '<i class="fas fa-video" style="color: #b197fc; margin-right: 8px;" title="Vidéo"></i>';
+
                     el.innerHTML = `
                         <img src="${data.image}" class="list-thumb">
                         <div class="list-info">
                             <div class="list-title">${data.title}</div>
+                            <div style="margin-bottom: 4px; font-size: 0.85rem;">${icons}</div>
                             <div class="list-id">#${data.id || '?'}</div>
                         </div>
                         <div class="list-actions">
+                            <div style="display:flex; flex-direction:column; gap:2px; margin-right:5px;">
+                                <button class="btn-icon btn-move" onclick="moveCard('${doc.id}', -1)" ${isFirst ? 'disabled style="opacity:0.3"' : ''}><i class="fas fa-chevron-up"></i></button>
+                                <button class="btn-icon btn-move" onclick="moveCard('${doc.id}', 1)" ${isLast ? 'disabled style="opacity:0.3"' : ''}><i class="fas fa-chevron-down"></i></button>
+                            </div>
                             <button class="btn-icon btn-edit" onclick="startEdit('${doc.id}')"><i class="fas fa-pen"></i></button>
                             <button class="btn-icon btn-delete" onclick="deleteCard('${doc.id}')"><i class="fas fa-trash"></i></button>
                         </div>
@@ -222,6 +310,76 @@
                 listContainer.innerHTML = '<div style="text-align:center; color:#ff4b4b;">Erreur de chargement.</div>';
             }
         }
+
+        // Move Card Logic
+        window.moveCard = async (docId, direction) => {
+            // 1. Animation visuelle immédiate
+            const currentEl = document.querySelector(`.admin-list-item[data-doc-id="${docId}"]`);
+            if (!currentEl) return;
+
+            const targetEl = direction === -1 ? currentEl.previousElementSibling : currentEl.nextElementSibling;
+            if (!targetEl) return; // Pas de cible visuelle
+
+            // Calculer la distance de déplacement
+            const currentRect = currentEl.getBoundingClientRect();
+            const targetRect = targetEl.getBoundingClientRect();
+            const distance = targetRect.top - currentRect.top;
+
+            // Appliquer l'animation
+            currentEl.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)';
+            targetEl.style.transition = 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)';
+            
+            currentEl.style.transform = `translateY(${distance}px)`;
+            targetEl.style.transform = `translateY(${-distance}px)`;
+            
+            // Mettre en avant l'élément qu'on déplace
+            currentEl.style.zIndex = '10';
+            currentEl.style.boxShadow = '0 5px 15px rgba(0,0,0,0.3)';
+
+            // Désactiver les boutons pendant l'animation
+            const buttons = document.querySelectorAll('.btn-move');
+            buttons.forEach(b => b.disabled = true);
+
+            try {
+                const currentDoc = await db.collection('cards').doc(docId).get();
+                if (!currentDoc.exists) return;
+                
+                const currentData = currentDoc.data();
+                const currentId = currentData.id;
+                const targetId = currentId + direction;
+                
+                // Find the other card
+                const snapshot = await db.collection('cards').where('id', '==', targetId).get();
+                
+                if (snapshot.empty) {
+                    // Reset si erreur
+                    currentEl.style.transform = 'none';
+                    targetEl.style.transform = 'none';
+                    buttons.forEach(b => b.disabled = false);
+                    return; 
+                }
+                
+                const targetDoc = snapshot.docs[0];
+                
+                // Attendre la fin de l'animation (300ms)
+                await new Promise(resolve => setTimeout(resolve, 300));
+
+                // Swap IDs
+                const batch = db.batch();
+                batch.update(db.collection('cards').doc(docId), { id: targetId });
+                batch.update(db.collection('cards').doc(targetDoc.id), { id: currentId });
+                
+                await batch.commit();
+                loadAdminCards();
+                
+            } catch (e) {
+                console.error("Error moving card:", e);
+                alert("Erreur lors du déplacement");
+                currentEl.style.transform = 'none';
+                targetEl.style.transform = 'none';
+                buttons.forEach(b => b.disabled = false);
+            }
+        };
 
         // Delete Card Logic
         let cardToDeleteId = null;
@@ -359,12 +517,15 @@
             
             fileInput.value = '';
             preview.style.display = 'none';
+            previewVideo.style.display = 'none';
+            previewVideo.src = '';
             document.getElementById('btn-recrop').style.display = 'none';
             btnAdd.innerText = 'Publier';
             cancelEditBtn.style.display = 'none';
             title.innerText = 'Gérer les souvenirs';
             currentEditId = null;
             compressedImageBase64 = null;
+            videoBase64 = null;
         }
 
         // Handle paste for images (Memojis/Stickers) in description, title, and explosion
@@ -401,7 +562,9 @@
         // Image Preview & Compression Logic
         const fileInput = document.getElementById('card-image');
         const preview = document.getElementById('preview');
+        const previewVideo = document.getElementById('preview-video');
         let compressedImageBase64 = null;
+        let videoBase64 = null; // Store video data
         
         // Cropper Variables
         let cropper = null;
@@ -410,6 +573,44 @@
         const btnCropConfirm = document.getElementById('btn-crop-confirm');
         const btnCropCancel = document.getElementById('btn-crop-cancel');
         const btnRecrop = document.getElementById('btn-recrop');
+
+        // Video Editor Variables
+        const videoModal = document.getElementById('video-editor-modal');
+        const editorVideo = document.getElementById('editor-video-preview');
+        const trimStart = document.getElementById('trim-start');
+        const trimEnd = document.getElementById('trim-end');
+        const lblStart = document.getElementById('lbl-start');
+        const lblEnd = document.getElementById('lbl-end');
+        const lblDuration = document.getElementById('lbl-duration');
+        const btnVideoSave = document.getElementById('btn-video-save');
+        const btnVideoCancel = document.getElementById('btn-video-cancel');
+        const processingOverlay = document.getElementById('processing-overlay');
+        const progressPercent = document.getElementById('progress-percent');
+        
+        let originalVideoFile = null;
+
+        // New Video Controls
+        const btnDefineCrop = document.getElementById('btn-define-crop');
+        const chkCompress = document.getElementById('chk-compress');
+        const selQuality = document.getElementById('sel-quality');
+        let videoCropData = null;
+        let isCroppingVideo = false;
+
+        btnDefineCrop.addEventListener('click', () => {
+            editorVideo.pause();
+            // Capture current frame
+            const canvas = document.createElement('canvas');
+            canvas.width = editorVideo.videoWidth;
+            canvas.height = editorVideo.videoHeight;
+            canvas.getContext('2d').drawImage(editorVideo, 0, 0);
+            
+            isCroppingVideo = true;
+            videoModal.style.display = 'none'; // Hide video modal temporarily
+            openCropper(canvas.toDataURL());
+        });
+        
+        chkCompress.addEventListener('change', updateVideoLabels);
+        selQuality.addEventListener('change', updateVideoLabels);
 
         // Function to open cropper with an image source
         function openCropper(imageSrc) {
@@ -437,14 +638,47 @@
 
         // Recrop button handler
         btnRecrop.addEventListener('click', () => {
-            if (preview.src) {
+            if (preview.src && !videoBase64) { // Only recrop if it's an image
                 openCropper(preview.src);
             }
         });
 
         fileInput.addEventListener('change', function(e) {
             const file = e.target.files[0];
-            if (file) {
+            if (!file) return;
+
+            if (file.type.startsWith('video/')) {
+                // Open Video Editor
+                originalVideoFile = file;
+                const url = URL.createObjectURL(file);
+                editorVideo.src = url;
+                
+                // Reset Crop Data
+                videoCropData = null;
+                btnDefineCrop.innerText = "✂️ Définir le recadrage";
+                btnDefineCrop.style.background = "#333";
+                
+                editorVideo.onloadedmetadata = () => {
+                    videoModal.style.display = 'flex';
+                    
+                    // Reset sliders
+                    trimStart.min = 0;
+                    trimStart.max = editorVideo.duration;
+                    trimStart.value = 0;
+                    
+                    trimEnd.min = 0;
+                    trimEnd.max = editorVideo.duration;
+                    trimEnd.value = editorVideo.duration;
+                    
+                    updateVideoLabels();
+                };
+
+            } else {
+                // Handle Image
+                videoBase64 = null; // Reset video
+                previewVideo.style.display = 'none';
+                previewVideo.src = '';
+                
                 const reader = new FileReader();
                 reader.onload = function(event) {
                     openCropper(event.target.result);
@@ -452,6 +686,221 @@
                 reader.readAsDataURL(file);
             }
             fileInput.value = '';
+        });
+
+        // Video Editor Logic
+        function updateVideoLabels() {
+            const start = parseFloat(trimStart.value);
+            const end = parseFloat(trimEnd.value);
+            
+            // Ensure start < end
+            if (start >= end) {
+                trimStart.value = end - 0.5;
+            }
+            
+            const duration = parseFloat(trimEnd.value) - parseFloat(trimStart.value);
+            
+            lblStart.innerText = parseFloat(trimStart.value).toFixed(1) + 's';
+            lblEnd.innerText = parseFloat(trimEnd.value).toFixed(1) + 's';
+            lblDuration.innerText = duration.toFixed(1) + 's';
+            
+            // Estimate Size
+            let bitrate = 500000; // Default
+            if (chkCompress.checked) {
+                bitrate = parseInt(selQuality.value);
+            } else {
+                // If not compressing, assume High Quality ~2.5Mbps
+                bitrate = 2500000; 
+            }
+            
+            // Audio overhead ~64kbps -> 64000
+            const totalBitrate = bitrate + 64000;
+            
+            // Size in KB = (Duration * totalBitrate) / 8 / 1024
+            const estimatedSizeKB = (duration * totalBitrate) / 8192;
+            
+            const lblSize = document.getElementById('lbl-size');
+            if (lblSize) {
+                lblSize.innerText = Math.round(estimatedSizeKB) + ' KB';
+                if (estimatedSizeKB > 950) {
+                    lblSize.style.color = '#ff6b6b'; // Red warning
+                } else {
+                    lblSize.style.color = '#51cf66'; // Green ok
+                }
+            }
+            
+            editorVideo.currentTime = parseFloat(trimStart.value);
+        }
+
+        trimStart.addEventListener('input', () => {
+            updateVideoLabels();
+            editorVideo.currentTime = parseFloat(trimStart.value);
+        });
+        
+        trimEnd.addEventListener('input', () => {
+            updateVideoLabels();
+            editorVideo.currentTime = parseFloat(trimEnd.value);
+        });
+        
+        // Enable pointer events for sliders
+        trimStart.style.pointerEvents = 'auto';
+        trimEnd.style.pointerEvents = 'auto';
+
+        btnVideoCancel.addEventListener('click', () => {
+            videoModal.style.display = 'none';
+            editorVideo.pause();
+            editorVideo.src = '';
+            originalVideoFile = null;
+        });
+
+        btnVideoSave.addEventListener('click', async () => {
+            const start = parseFloat(trimStart.value);
+            const end = parseFloat(trimEnd.value);
+            const duration = end - start;
+            
+            if (duration > 15) {
+                alert("La vidéo est trop longue ! Essaye de garder moins de 10-15 secondes.");
+                return;
+            }
+
+            processingOverlay.style.display = 'flex';
+            editorVideo.pause();
+            
+            // Compression Logic using Canvas Recording
+            const canvas = document.createElement('canvas');
+            
+            // Determine Resolution and Bitrate
+            let targetBitrate = 500000;
+            
+            if (chkCompress.checked) {
+                // Low resolution for size
+                canvas.width = 320; 
+                canvas.height = 568;
+                targetBitrate = parseInt(selQuality.value);
+            } else {
+                // High resolution (capped at 720p width to avoid crashes)
+                const aspectRatio = 340/600;
+                canvas.width = Math.min(editorVideo.videoWidth, 720);
+                canvas.height = canvas.width / aspectRatio;
+                targetBitrate = 2500000; // 2.5 Mbps
+            }
+             
+            const ctx = canvas.getContext('2d');
+            
+            // Setup MediaRecorder
+            const stream = canvas.captureStream(30); // 30 FPS
+            const chunks = [];
+            
+            // Try to use efficient codecs
+            let mimeType = 'video/webm;codecs=vp8';
+            if (!MediaRecorder.isTypeSupported(mimeType)) {
+                mimeType = 'video/mp4'; // Safari fallback
+                if (!MediaRecorder.isTypeSupported(mimeType)) {
+                    mimeType = ''; // Default
+                }
+            }
+            
+            const options = mimeType ? { mimeType, videoBitsPerSecond: targetBitrate } : { videoBitsPerSecond: targetBitrate };
+            
+            let recorder;
+            try {
+                recorder = new MediaRecorder(stream, options);
+            } catch (e) {
+                console.warn("Recorder error, trying default", e);
+                recorder = new MediaRecorder(stream);
+            }
+
+            recorder.ondataavailable = e => {
+                if (e.data.size > 0) chunks.push(e.data);
+            };
+
+            recorder.onstop = async () => {
+                const blob = new Blob(chunks, { type: mimeType || 'video/webm' });
+                console.log("Compressed size:", (blob.size / 1024).toFixed(2) + "KB");
+                
+                if (blob.size > 950 * 1024) {
+                    alert("La vidéo est encore trop lourde (" + (blob.size/1024).toFixed(0) + "KB). Réduis la durée !");
+                    processingOverlay.style.display = 'none';
+                    return;
+                }
+
+                // Convert to Base64
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    videoBase64 = reader.result;
+                    
+                    // Generate Thumbnail
+                    const thumbCanvas = document.createElement('canvas');
+                    thumbCanvas.width = canvas.width;
+                    thumbCanvas.height = canvas.height;
+                    thumbCanvas.getContext('2d').drawImage(editorVideo, 0, 0, thumbCanvas.width, thumbCanvas.height);
+                    compressedImageBase64 = thumbCanvas.toDataURL('image/jpeg', 0.7);
+                    
+                    // Update UI
+                    previewVideo.src = videoBase64;
+                    previewVideo.style.display = 'block';
+                    preview.style.display = 'none';
+                    btnRecrop.style.display = 'none';
+                    
+                    videoModal.style.display = 'none';
+                    processingOverlay.style.display = 'none';
+                    editorVideo.src = ''; // Cleanup
+                };
+                reader.readAsDataURL(blob);
+            };
+
+            // Start Recording Process
+            recorder.start();
+            editorVideo.currentTime = start;
+            
+            // Play and Draw Loop
+            await editorVideo.play();
+            
+            const drawFrame = () => {
+                if (editorVideo.currentTime >= end || editorVideo.paused) {
+                    recorder.stop();
+                    editorVideo.pause();
+                    return;
+                }
+                
+                if (videoCropData) {
+                    // Use custom crop
+                    ctx.drawImage(editorVideo, 
+                        videoCropData.x, videoCropData.y, videoCropData.width, videoCropData.height, 
+                        0, 0, canvas.width, canvas.height
+                    );
+                } else {
+                    // Draw center crop to fit aspect ratio (Default)
+                    const vidRatio = editorVideo.videoWidth / editorVideo.videoHeight;
+                    const canvasRatio = canvas.width / canvas.height;
+                    
+                    let sx, sy, sWidth, sHeight;
+                    
+                    if (vidRatio > canvasRatio) {
+                        // Video is wider
+                        sHeight = editorVideo.videoHeight;
+                        sWidth = sHeight * canvasRatio;
+                        sx = (editorVideo.videoWidth - sWidth) / 2;
+                        sy = 0;
+                    } else {
+                        // Video is taller
+                        sWidth = editorVideo.videoWidth;
+                        sHeight = sWidth / canvasRatio;
+                        sx = 0;
+                        sy = (editorVideo.videoHeight - sHeight) / 2;
+                    }
+                    
+                    ctx.drawImage(editorVideo, sx, sy, sWidth, sHeight, 0, 0, canvas.width, canvas.height);
+                }
+                
+                // Update progress
+                const progress = ((editorVideo.currentTime - start) / duration) * 100;
+                progressPercent.innerText = Math.min(100, Math.round(progress)) + '%';
+                
+                requestAnimationFrame(drawFrame);
+            };
+            
+            drawFrame();
         });
 
         btnCropCancel.addEventListener('click', () => {
@@ -465,26 +914,44 @@
         btnCropConfirm.addEventListener('click', () => {
             if (!cropper) return;
             
-            // Get cropped canvas
-            const canvas = cropper.getCroppedCanvas({
-                width: 680, // 2x for retina
-                height: 1200,
-                imageSmoothingEnabled: true,
-                imageSmoothingQuality: 'high',
-            });
-            
-            // Compress to JPEG
-            compressedImageBase64 = canvas.toDataURL('image/jpeg', 0.8);
-            
-            // Show preview
-            preview.src = compressedImageBase64;
-            preview.style.display = 'block';
-            btnRecrop.style.display = 'block'; // Show recrop button for the new image
-            
-            // Close modal
-            cropperModal.style.display = 'none';
-            cropper.destroy();
-            cropper = null;
+            if (isCroppingVideo) {
+                // Save crop data for video
+                videoCropData = cropper.getData();
+                
+                // Close cropper and return to video editor
+                cropperModal.style.display = 'none';
+                cropper.destroy();
+                cropper = null;
+                
+                videoModal.style.display = 'flex';
+                isCroppingVideo = false;
+                
+                // Update button text to show crop is set
+                btnDefineCrop.innerText = "✅ Recadrage défini";
+                btnDefineCrop.style.background = "#51cf66";
+                
+            } else {
+                // Get cropped canvas
+                const canvas = cropper.getCroppedCanvas({
+                    width: 680, // 2x for retina
+                    height: 1200,
+                    imageSmoothingEnabled: true,
+                    imageSmoothingQuality: 'high',
+                });
+                
+                // Compress to JPEG
+                compressedImageBase64 = canvas.toDataURL('image/jpeg', 0.8);
+                
+                // Show preview
+                preview.src = compressedImageBase64;
+                preview.style.display = 'block';
+                btnRecrop.style.display = 'block'; // Show recrop button for the new image
+                
+                // Close modal
+                cropperModal.style.display = 'none';
+                cropper.destroy();
+                cropper = null;
+            }
         });
 
         // Upload / Update Logic
@@ -499,44 +966,39 @@
             const status = document.getElementById('status');
 
             if (!titleVal || !compressedImageBase64) {
-                alert('Il faut au moins un titre et une image !');
+                alert('Il faut au moins un titre et une image (ou vidéo) !');
                 return;
             }
 
             status.innerText = currentEditId ? 'Mise à jour...' : 'Envoi en cours...';
             
             try {
+                const cardData = {
+                    title: titleVal,
+                    text: textVal,
+                    image: compressedImageBase64,
+                    video: videoBase64 || null, // Save video if exists
+                    isSpecial: isSpecial,
+                    isScratch: isScratch,
+                    isFlip: isFlip,
+                    explosionEmojis: isSpecial ? explosionEmojis : null,
+                    flipText: isFlip ? flipText : null,
+                };
+
                 if (currentEditId) {
                     // Update existing
-                    await db.collection('cards').doc(currentEditId).update({
-                        title: titleVal,
-                        text: textVal,
-                        image: compressedImageBase64,
-                        isSpecial: isSpecial,
-                        isScratch: isScratch,
-                        isFlip: isFlip,
-                        explosionEmojis: isSpecial ? explosionEmojis : null,
-                        flipText: isFlip ? flipText : null,
-                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                    });
+                    cardData.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+                    await db.collection('cards').doc(currentEditId).update(cardData);
                     status.innerText = 'Modifié avec succès !';
                 } else {
                     // Create new
                     const snapshot = await db.collection('cards').get();
                     const count = snapshot.size;
+                    
+                    cardData.id = count + 1;
+                    cardData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
 
-                    await db.collection('cards').add({
-                        id: count + 1,
-                        title: titleVal,
-                        text: textVal,
-                        image: compressedImageBase64,
-                        isSpecial: isSpecial,
-                        isScratch: isScratch,
-                        isFlip: isFlip,
-                        explosionEmojis: isSpecial ? explosionEmojis : null,
-                        flipText: isFlip ? flipText : null,
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                    });
+                    await db.collection('cards').add(cardData);
                     status.innerText = 'Ajouté avec succès !';
                 }
                 
