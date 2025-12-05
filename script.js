@@ -411,15 +411,17 @@ function initSwipe(card, nextCard, thirdCard, fourthCard) {
     let currentX = 0;
     let currentY = 0;
     let isDragging = false;
+    let isAnimating = false; // Prevent double triggers
     const threshold = window.innerWidth * 0.25; // 25% of screen width to trigger
 
     // Shake detection variables
     let shakeCount = 0;
     let lastShakeDir = 0;
     let lastShakeX = 0;
-    const shakeDistanceThreshold = 20; // Minimum pixels to count as a shake stroke
+    const shakeDistanceThreshold = 30; // Increased threshold to prevent accidental triggers
 
     const handleStart = (e) => {
+        if (isAnimating) return;
         isDragging = true;
         startX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
         startY = e.type.includes('mouse') ? e.clientY : e.touches[0].clientY;
@@ -513,7 +515,7 @@ function initSwipe(card, nextCard, thirdCard, fourthCard) {
     };
 
     const handleEnd = () => {
-        if (!isDragging) return;
+        if (!isDragging || isAnimating) return;
         isDragging = false;
         
         // Re-enable transitions
@@ -524,10 +526,11 @@ function initSwipe(card, nextCard, thirdCard, fourthCard) {
         if(fourthCard) fourthCard.style.transition = transition;
 
         // --- CARTOON SHAKE RELEASE ---
-        if (shakeCount >= 5) {
+        if (shakeCount >= 8) { // Increased to 8 shakes to be safer
             // Super Spin & Fly Away Upwards
             if (navigator.vibrate) navigator.vibrate([50, 50, 50]); // Success vibration pattern
             
+            isAnimating = true;
             card.style.transition = 'transform 1s cubic-bezier(0.5, 0, 0.5, 1)'; // Linear-ish acceleration
             // Fly up (-150vh), Spin crazy (1080deg), Shrink (scale 0.1)
             card.style.transform = `translateY(-150vh) rotate(${currentX * 5 + 1080}deg) scale(0.1)`;
@@ -552,6 +555,8 @@ function initSwipe(card, nextCard, thirdCard, fourthCard) {
             if (navigator.vibrate) {
                 navigator.vibrate(15); // Haptic feedback
             }
+
+            isAnimating = true;
 
             // Calculate throw direction
             const velocity = 1.5;
@@ -634,6 +639,8 @@ function initSwipe(card, nextCard, thirdCard, fourthCard) {
 }
 
 function nextCardFunc() {
+    if (window.cleanupSwipe) window.cleanupSwipe(); // Cleanup listeners immediately
+    
     currentIndex++;
     if (currentIndex >= cards.length) {
         currentIndex = 0; // Loop back to start
@@ -822,37 +829,57 @@ function createStars() {
 
     // Request Permission for iOS 13+
     if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-        // iOS 13+ requires permission
-        const permissionBtn = document.createElement('button');
-        permissionBtn.innerText = "Activer l'effet étoiles ✨";
-        permissionBtn.style.position = 'fixed';
-        permissionBtn.style.bottom = '20px';
-        permissionBtn.style.left = '50%';
-        permissionBtn.style.transform = 'translateX(-50%)';
-        permissionBtn.style.zIndex = '9999';
-        permissionBtn.style.padding = '10px 20px';
-        permissionBtn.style.background = 'rgba(255,255,255,0.2)';
-        permissionBtn.style.backdropFilter = 'blur(10px)';
-        permissionBtn.style.border = '1px solid rgba(255,255,255,0.3)';
-        permissionBtn.style.color = 'white';
-        permissionBtn.style.borderRadius = '20px';
-        permissionBtn.style.cursor = 'pointer';
+        // Check if we already have access by listening for a moment
+        let accessGranted = false;
         
-        document.body.appendChild(permissionBtn);
+        const testHandler = (e) => {
+            if (e.gamma !== null) {
+                accessGranted = true;
+                window.removeEventListener('deviceorientation', testHandler);
+                window.addEventListener('deviceorientation', handleOrientation);
+            }
+        };
         
-        permissionBtn.addEventListener('click', () => {
-            DeviceOrientationEvent.requestPermission()
-                .then(response => {
-                    if (response === 'granted') {
-                        window.addEventListener('deviceorientation', handleOrientation);
-                        permissionBtn.remove();
-                    } else {
-                        alert("Permission refusée pour le gyroscope.");
-                        permissionBtn.remove();
-                    }
-                })
-                .catch(console.error);
-        });
+        window.addEventListener('deviceorientation', testHandler);
+        
+        // If after 500ms we haven't received data, show the button
+        setTimeout(() => {
+            if (!accessGranted) {
+                window.removeEventListener('deviceorientation', testHandler);
+                
+                // Show button
+                const permissionBtn = document.createElement('button');
+                permissionBtn.innerText = "Activer l'effet étoiles ✨";
+                permissionBtn.style.position = 'fixed';
+                permissionBtn.style.bottom = '20px';
+                permissionBtn.style.left = '50%';
+                permissionBtn.style.transform = 'translateX(-50%)';
+                permissionBtn.style.zIndex = '9999';
+                permissionBtn.style.padding = '10px 20px';
+                permissionBtn.style.background = 'rgba(255,255,255,0.2)';
+                permissionBtn.style.backdropFilter = 'blur(10px)';
+                permissionBtn.style.border = '1px solid rgba(255,255,255,0.3)';
+                permissionBtn.style.color = 'white';
+                permissionBtn.style.borderRadius = '20px';
+                permissionBtn.style.cursor = 'pointer';
+                
+                document.body.appendChild(permissionBtn);
+                
+                permissionBtn.addEventListener('click', () => {
+                    DeviceOrientationEvent.requestPermission()
+                        .then(response => {
+                            if (response === 'granted') {
+                                window.addEventListener('deviceorientation', handleOrientation);
+                                permissionBtn.remove();
+                            } else {
+                                alert("Permission refusée pour le gyroscope.");
+                                permissionBtn.remove();
+                            }
+                        })
+                        .catch(console.error);
+                });
+            }
+        }, 1000);
     } else {
         // Non-iOS or older devices
         window.addEventListener('deviceorientation', handleOrientation);
