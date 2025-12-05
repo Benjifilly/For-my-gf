@@ -8,7 +8,49 @@
     <link rel="stylesheet" href="modal.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+    <style>
+        /* Fix for dual range slider */
+        input[type=range] {
+            -webkit-appearance: none;
+            appearance: none;
+            pointer-events: none; /* Let clicks pass through track */
+            background: transparent;
+        }
+        
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            pointer-events: auto; /* Capture clicks on thumb */
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #4dabf7;
+            cursor: pointer;
+            margin-top: -8px;
+            position: relative;
+            z-index: 10;
+            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+        }
+        
+        input[type=range]::-moz-range-thumb {
+            pointer-events: auto;
+            height: 20px;
+            width: 20px;
+            border: none;
+            border-radius: 50%;
+            background: #4dabf7;
+            cursor: pointer;
+            position: relative;
+            z-index: 10;
+            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+        }
+        
+        /* Ensure video preview is visible */
+        #editor-video-preview {
+            background: #000;
+            z-index: 1;
+        }
+    </style>
 </head>
 <body class="admin-body">
     
@@ -707,6 +749,12 @@
                 
                 editorVideo.onloadedmetadata = () => {
                     videoModal.style.display = 'flex';
+                    
+                    // Force play to ensure preview is visible on iOS
+                    editorVideo.play().then(() => {
+                        editorVideo.pause();
+                        editorVideo.currentTime = 0;
+                    }).catch(e => console.log("Auto-play for preview prevented", e));
                     
                     // Reset sliders
                     trimStart.min = 0;

@@ -198,8 +198,13 @@ function createCardElement(data) {
         el.innerHTML = `
             <div class="card-image-container">
                 <img src="${data.image}" class="card-image" draggable="false">
-                ${data.video ? `<video src="${data.video}" class="card-video" loop muted playsinline style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; z-index:2;"></video>` : ''}
-                <div class="card-overlay"></div>
+                ${data.video ? `
+                    <video src="${data.video}" class="card-video" loop muted playsinline style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; z-index:2;"></video>
+                    <div class="video-indicator" style="position:absolute; top:10px; right:10px; color:rgba(255,255,255,0.7); font-size:1.2rem; z-index:4; text-shadow:0 2px 4px rgba(0,0,0,0.5);">
+                        <i class="fas fa-video"></i>
+                    </div>
+                ` : ''}
+                <div class="card-overlay" style="z-index:3;"></div>
             </div>
             <div class="card-content">
                 <div class="card-title">${data.title}</div>
@@ -210,19 +215,21 @@ function createCardElement(data) {
         // Video Logic (Hover PC / Long Press Mobile)
         if (data.video) {
             const videoEl = el.querySelector('.card-video');
-            const imgEl = el.querySelector('.card-image');
+            const indicator = el.querySelector('.video-indicator');
             let pressTimer;
 
             // PC Hover
             el.addEventListener('mouseenter', () => {
                 videoEl.style.display = 'block';
                 videoEl.play().catch(e => console.log("Autoplay prevented", e));
+                indicator.style.display = 'none'; // Hide icon when playing
             });
 
             el.addEventListener('mouseleave', () => {
                 videoEl.pause();
                 videoEl.currentTime = 0;
                 videoEl.style.display = 'none';
+                indicator.style.display = 'block';
             });
 
             // Mobile Long Press
@@ -230,6 +237,7 @@ function createCardElement(data) {
                 pressTimer = setTimeout(() => {
                     videoEl.style.display = 'block';
                     videoEl.play();
+                    indicator.style.display = 'none';
                     if (navigator.vibrate) navigator.vibrate(20); // Haptic feedback
                 }, 500); // 500ms long press
             }, { passive: true });
@@ -239,6 +247,7 @@ function createCardElement(data) {
                 videoEl.pause();
                 videoEl.currentTime = 0;
                 videoEl.style.display = 'none';
+                indicator.style.display = 'block';
             });
 
             el.addEventListener('touchmove', () => {
@@ -847,21 +856,23 @@ function createStars() {
             if (!accessGranted) {
                 window.removeEventListener('deviceorientation', testHandler);
                 
-                // Show button
+                // Show discreet button top right
                 const permissionBtn = document.createElement('button');
-                permissionBtn.innerText = "Activer l'effet étoiles ✨";
+                // Icon: Star with slash (using FontAwesome stack or just a specific icon if available)
+                // Since we want "simple icons", let's use a star and change opacity/style
+                permissionBtn.innerHTML = '<i class="fas fa-star" style="opacity:0.3; position:relative;"><div style="position:absolute; top:50%; left:0; width:100%; height:2px; background:white; transform:rotate(-45deg);"></div></i>';
+                
                 permissionBtn.style.position = 'fixed';
-                permissionBtn.style.bottom = '20px';
-                permissionBtn.style.left = '50%';
-                permissionBtn.style.transform = 'translateX(-50%)';
+                permissionBtn.style.top = '20px';
+                permissionBtn.style.right = '20px';
                 permissionBtn.style.zIndex = '9999';
-                permissionBtn.style.padding = '10px 20px';
-                permissionBtn.style.background = 'rgba(255,255,255,0.2)';
-                permissionBtn.style.backdropFilter = 'blur(10px)';
-                permissionBtn.style.border = '1px solid rgba(255,255,255,0.3)';
+                permissionBtn.style.background = 'transparent';
+                permissionBtn.style.border = 'none';
                 permissionBtn.style.color = 'white';
-                permissionBtn.style.borderRadius = '20px';
+                permissionBtn.style.fontSize = '1.2rem';
                 permissionBtn.style.cursor = 'pointer';
+                permissionBtn.style.opacity = '0.7';
+                permissionBtn.style.padding = '10px'; // Hit area
                 
                 document.body.appendChild(permissionBtn);
                 
@@ -870,10 +881,19 @@ function createStars() {
                         .then(response => {
                             if (response === 'granted') {
                                 window.addEventListener('deviceorientation', handleOrientation);
-                                permissionBtn.remove();
+                                // Change icon to active star
+                                permissionBtn.innerHTML = '<i class="fas fa-star" style="color:#ffd43b; filter:drop-shadow(0 0 5px rgba(255,212,59,0.5));"></i>';
+                                permissionBtn.style.opacity = '1';
+                                
+                                // Optional: Hide after a while or keep as toggle? 
+                                // User said "juste deux icones simple", implying it stays?
+                                // Let's keep it but make it fade out or just stay discreet.
+                                setTimeout(() => {
+                                    permissionBtn.style.opacity = '0.3';
+                                }, 3000);
+                                
                             } else {
                                 alert("Permission refusée pour le gyroscope.");
-                                permissionBtn.remove();
                             }
                         })
                         .catch(console.error);
