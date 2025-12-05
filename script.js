@@ -810,7 +810,7 @@ function createStars() {
     animate();
 
     // Gyroscope (iOS/Mobile)
-    window.addEventListener('deviceorientation', (e) => {
+    function handleOrientation(e) {
         // Gamma: Left/Right (-90 to 90)
         // Beta: Front/Back (-180 to 180)
         if (e.gamma !== null && e.beta !== null) {
@@ -818,7 +818,45 @@ function createStars() {
             targetX = e.gamma * 2; // Multiplier for movement range
             targetY = e.beta * 2;
         }
-    });
+    }
+
+    // Request Permission for iOS 13+
+    if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+        // iOS 13+ requires permission
+        const permissionBtn = document.createElement('button');
+        permissionBtn.innerText = "Activer l'effet étoiles ✨";
+        permissionBtn.style.position = 'fixed';
+        permissionBtn.style.bottom = '20px';
+        permissionBtn.style.left = '50%';
+        permissionBtn.style.transform = 'translateX(-50%)';
+        permissionBtn.style.zIndex = '9999';
+        permissionBtn.style.padding = '10px 20px';
+        permissionBtn.style.background = 'rgba(255,255,255,0.2)';
+        permissionBtn.style.backdropFilter = 'blur(10px)';
+        permissionBtn.style.border = '1px solid rgba(255,255,255,0.3)';
+        permissionBtn.style.color = 'white';
+        permissionBtn.style.borderRadius = '20px';
+        permissionBtn.style.cursor = 'pointer';
+        
+        document.body.appendChild(permissionBtn);
+        
+        permissionBtn.addEventListener('click', () => {
+            DeviceOrientationEvent.requestPermission()
+                .then(response => {
+                    if (response === 'granted') {
+                        window.addEventListener('deviceorientation', handleOrientation);
+                        permissionBtn.remove();
+                    } else {
+                        alert("Permission refusée pour le gyroscope.");
+                        permissionBtn.remove();
+                    }
+                })
+                .catch(console.error);
+        });
+    } else {
+        // Non-iOS or older devices
+        window.addEventListener('deviceorientation', handleOrientation);
+    }
 
     // Mouse (Desktop fallback)
     document.addEventListener('mousemove', (e) => {
