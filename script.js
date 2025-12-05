@@ -814,19 +814,22 @@ function createStars() {
     let currentY = 0;
     let targetX = 0;
     let targetY = 0;
+    let isParallaxEnabled = localStorage.getItem('parallax_enabled') !== 'false'; // Default true
 
     // Smooth interpolation
     function animate() {
-        currentX += (targetX - currentX) * 0.05;
-        currentY += (targetY - currentY) * 0.05;
-        
-        container.style.transform = `translate(${currentX}px, ${currentY}px)`;
+        if (isParallaxEnabled) {
+            currentX += (targetX - currentX) * 0.05;
+            currentY += (targetY - currentY) * 0.05;
+            container.style.transform = `translate(${currentX}px, ${currentY}px)`;
+        }
         requestAnimationFrame(animate);
     }
     animate();
 
     // Gyroscope (iOS/Mobile)
     function handleOrientation(e) {
+        if (!isParallaxEnabled) return;
         // Gamma: Left/Right (-90 to 90)
         // Beta: Front/Back (-180 to 180)
         if (e.gamma !== null && e.beta !== null) {
@@ -836,73 +839,120 @@ function createStars() {
         }
     }
 
-    // Request Permission for iOS 13+
-    if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-        // Check if we already have access by listening for a moment
-        let accessGranted = false;
+    // --- Toggle Button Logic ---
+    const toggleBtn = document.createElement('button');
+    toggleBtn.style.position = 'fixed';
+    toggleBtn.style.top = '20px';
+    toggleBtn.style.right = '20px';
+    toggleBtn.style.zIndex = '9999';
+    toggleBtn.style.background = 'transparent';
+    toggleBtn.style.border = 'none';
+    toggleBtn.style.width = 'auto';
+    toggleBtn.style.height = 'auto';
+    toggleBtn.style.color = 'white';
+    toggleBtn.style.fontSize = '1.5rem'; // Slightly larger icon
+    toggleBtn.style.cursor = 'pointer';
+    toggleBtn.style.display = 'flex';
+    toggleBtn.style.alignItems = 'center';
+    toggleBtn.style.justifyContent = 'center';
+    toggleBtn.style.padding = '10px'; // Hit area
+    toggleBtn.style.transition = 'opacity 0.3s, transform 0.2s';
+    
+    document.body.appendChild(toggleBtn);
+
+    function updateButtonState(enabled) {
+        if (enabled) {
+            // Active: Simple icon
+            toggleBtn.innerHTML = '<i class="fas fa-up-down-left-right"></i>';
+            toggleBtn.style.opacity = '0.8';
+        } else {
+            // Disabled: Icon with slash overlay
+            // Using a relative container to ensure the main icon stays the same size
+            toggleBtn.innerHTML = `
+                <div style="position: relative; display: inline-flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-up-down-left-right"></i>
+                    <i class="fas fa-slash" style="position: absolute; font-size: 1em; opacity: 0.8;"></i>
+                </div>
+            `;
+            toggleBtn.style.opacity = '0.5';
+        }
+    }
+
+    // Initial UI State
+    updateButtonState(isParallaxEnabled);
+
+    function enableParallax() {
+        // iOS 13+ Permission Check
+        if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+            DeviceOrientationEvent.requestPermission()
+                .then(response => {
+                    if (response === 'granted') {
+                        window.addEventListener('deviceorientation', handleOrientation);
+                        isParallaxEnabled = true;
+                        localStorage.setItem('parallax_enabled', 'true');
+                        updateButtonState(true);
+                    } else {
+                        alert("Permission refusée. Activez-la dans les réglages.");
+                        isParallaxEnabled = false;
+                        localStorage.setItem('parallax_enabled', 'false');
+                        updateButtonState(false);
+                    }
+                })
+                .catch(console.error);
+        } else {
+            // Non-iOS or older
+            window.addEventListener('deviceorientation', handleOrientation);
+            isParallaxEnabled = true;
+            localStorage.setItem('parallax_enabled', 'true');
+            updateButtonState(true);
+        }
+    }
+
+    function disableParallax() {
+        window.removeEventListener('deviceorientation', handleOrientation);
+        isParallaxEnabled = false;
+        localStorage.setItem('parallax_enabled', 'false');
+        updateButtonState(false);
         
-        const testHandler = (e) => {
-            if (e.gamma !== null) {
-                accessGranted = true;
-                window.removeEventListener('deviceorientation', testHandler);
-                window.addEventListener('deviceorientation', handleOrientation);
-            }
-        };
-        
-        window.addEventListener('deviceorientation', testHandler);
-        
-        // If after 500ms we haven't received data, show the button
-        setTimeout(() => {
-            if (!accessGranted) {
-                window.removeEventListener('deviceorientation', testHandler);
-                
-                // Show discreet button top right
-                const permissionBtn = document.createElement('button');
-                // Icon: Star with slash (using FontAwesome stack or just a specific icon if available)
-                // Since we want "simple icons", let's use a star and change opacity/style
-                permissionBtn.innerHTML = '<i class="fas fa-star" style="opacity:0.3; position:relative;"><div style="position:absolute; top:50%; left:0; width:100%; height:2px; background:white; transform:rotate(-45deg);"></div></i>';
-                
-                permissionBtn.style.position = 'fixed';
-                permissionBtn.style.top = '20px';
-                permissionBtn.style.right = '20px';
-                permissionBtn.style.zIndex = '9999';
-                permissionBtn.style.background = 'transparent';
-                permissionBtn.style.border = 'none';
-                permissionBtn.style.color = 'white';
-                permissionBtn.style.fontSize = '1.2rem';
-                permissionBtn.style.cursor = 'pointer';
-                permissionBtn.style.opacity = '0.7';
-                permissionBtn.style.padding = '10px'; // Hit area
-                
-                document.body.appendChild(permissionBtn);
-                
-                permissionBtn.addEventListener('click', () => {
-                    DeviceOrientationEvent.requestPermission()
-                        .then(response => {
-                            if (response === 'granted') {
-                                window.addEventListener('deviceorientation', handleOrientation);
-                                // Change icon to active star
-                                permissionBtn.innerHTML = '<i class="fas fa-star" style="color:#ffd43b; filter:drop-shadow(0 0 5px rgba(255,212,59,0.5));"></i>';
-                                permissionBtn.style.opacity = '1';
-                                
-                                // Optional: Hide after a while or keep as toggle? 
-                                // User said "juste deux icones simple", implying it stays?
-                                // Let's keep it but make it fade out or just stay discreet.
-                                setTimeout(() => {
-                                    permissionBtn.style.opacity = '0.3';
-                                }, 3000);
-                                
-                            } else {
-                                alert("Permission refusée pour le gyroscope.");
-                            }
-                        })
-                        .catch(console.error);
-                });
-            }
-        }, 1000);
-    } else {
-        // Non-iOS or older devices
+        // Reset position smoothly
+        targetX = 0;
+        targetY = 0;
+    }
+
+    toggleBtn.addEventListener('click', () => {
+        if (isParallaxEnabled) {
+            disableParallax();
+        } else {
+            enableParallax();
+        }
+    });
+
+    // --- Auto-Start Logic (Persistence) ---
+    if (isParallaxEnabled) {
+        // Try to attach listener immediately
         window.addEventListener('deviceorientation', handleOrientation);
+
+        // Check if we actually receive data (iOS might need re-request after close)
+        if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+            let gotData = false;
+            const checker = (e) => {
+                if (e.gamma !== null) {
+                    gotData = true;
+                    window.removeEventListener('deviceorientation', checker);
+                }
+            };
+            window.addEventListener('deviceorientation', checker);
+
+            // If no data after 1s, assume permission lost/needed -> Show disabled state
+            setTimeout(() => {
+                if (!gotData) {
+                    console.log("No gyro data received, requiring user interaction.");
+                    isParallaxEnabled = false; // Temporarily disable until click
+                    updateButtonState(false);
+                    // Note: We don't update localStorage here to keep user preference 'true'
+                }
+            }, 1000);
+        }
     }
 
     // Mouse (Desktop fallback)

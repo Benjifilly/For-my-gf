@@ -937,6 +937,9 @@
                     preview.style.display = 'none';
                     btnRecrop.style.display = 'none';
                     
+                    // Force play for preview visibility
+                    previewVideo.play().catch(e => console.log("Preview play failed", e));
+                    
                     videoModal.style.display = 'none';
                     processingOverlay.style.display = 'none';
                     editorVideo.src = ''; // Cleanup
