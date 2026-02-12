@@ -842,7 +842,7 @@ function createStars() {
     // --- Toggle Button Logic ---
     const toggleBtn = document.createElement('button');
     toggleBtn.style.position = 'fixed';
-    toggleBtn.style.top = '20px';
+    toggleBtn.style.top = '55px';
     toggleBtn.style.right = '20px';
     toggleBtn.style.zIndex = '9999';
     toggleBtn.style.background = 'transparent';

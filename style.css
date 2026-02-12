@@ -12,6 +12,7 @@ html, body {
     touch-action: manipulation;
     overscroll-behavior: none;
     -webkit-text-size-adjust: 100%;
+    overflow-x: hidden;
 }
 
 * {
@@ -336,6 +337,9 @@ body::after {
     background: #0f0f11;
     min-height: 100vh;
     padding: 40px 0;
+    overflow-x: hidden;
+    width: 100%;
+    max-width: 100vw;
 }
 
 .admin-wrapper {
@@ -343,6 +347,8 @@ body::after {
     max-width: 450px;
     margin: 0 auto;
     padding: 0 20px;
+    overflow-x: hidden;
+    box-sizing: border-box;
 }
 
 .admin-card {
