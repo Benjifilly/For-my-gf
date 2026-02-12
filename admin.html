@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Admin</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="modal.css">
@@ -336,7 +336,7 @@
                         <div class="drag-handle" style="padding: 10px; cursor: grab; color: #666; display: flex; align-items: center;">
                             <i class="fas fa-grip-vertical"></i>
                         </div>
-                        <img src="${data.image}" class="list-thumb">
+                        <img src="${data.image}" class="list-thumb" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22%3E%3Crect fill=%22%23333%22 width=%22100%22 height=%22100%22/%3E%3Ctext fill=%22%23666%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 font-size=%2214%22%3E❌%3C/text%3E%3C/svg%3E'; this.onerror=null;" loading="lazy">
                         <div class="list-info">
                             <div class="list-title">${data.title}</div>
                             <div style="margin-bottom: 4px; font-size: 0.85rem;">${icons}</div>
@@ -559,6 +559,11 @@
 
             preview.src = data.image;
             preview.style.display = 'block';
+            preview.onerror = function() {
+                this.style.display = 'none';
+                status.innerText = '⚠️ Image introuvable';
+                setTimeout(() => status.innerText = '', 3000);
+            };
             
             // Show recrop button
             document.getElementById('btn-recrop').style.display = 'block';
@@ -1043,6 +1048,11 @@
                 // Show preview
                 preview.src = compressedImageBase64;
                 preview.style.display = 'block';
+                preview.onerror = function() {
+                    this.style.display = 'none';
+                    status.innerText = '⚠️ Erreur lors du chargement de l\'image';
+                    setTimeout(() => status.innerText = '', 3000);
+                };
                 btnRecrop.style.display = 'block'; // Show recrop button for the new image
                 
                 // Close modal
