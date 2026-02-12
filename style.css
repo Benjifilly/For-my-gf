@@ -805,3 +805,152 @@ body::after {
     cursor: pointer;
     width: 100%;
 }
+
+/* Mobile & iPhone Optimizations */
+@media screen and (max-width: 768px) {
+    /* Better spacing for mobile */
+    .counter {
+        top: max(20px, env(safe-area-inset-top));
+        font-size: 0.85rem;
+    }
+
+    .card-container {
+        max-width: 95vw;
+        max-height: 85vh;
+    }
+
+    .card-title {
+        font-size: 1.6rem;
+    }
+
+    .card-text {
+        font-size: 1rem;
+    }
+
+    .card-content {
+        padding: 20px;
+    }
+
+    /* Better touch targets */
+    .sidebar-toggle {
+        width: 54px;
+        height: 54px;
+        font-size: 1.3rem;
+        top: max(15px, env(safe-area-inset-top));
+        right: max(15px, env(safe-area-inset-right));
+    }
+
+    /* Admin improvements for mobile */
+    .admin-wrapper {
+        padding: 0 15px;
+    }
+
+    .admin-card {
+        padding: 20px;
+        max-height: 90vh;
+    }
+
+    .admin-title {
+        font-size: 1.3rem;
+        margin-bottom: 20px;
+    }
+
+    /* Better list items for mobile */
+    .admin-list-item {
+        padding: 10px;
+        gap: 12px;
+    }
+
+    .list-thumb {
+        width: 70px;
+        height: 70px;
+    }
+
+    .list-title {
+        font-size: 0.95rem;
+    }
+
+    /* Better install prompt positioning */
+    .install-prompt {
+        padding: max(20px, env(safe-area-inset-bottom)) 15px 15px;
+    }
+
+    .install-content {
+        padding: 20px;
+    }
+}
+
+/* iPhone X and newer (with notch) specific adjustments */
+@media screen and (max-width: 430px) {
+    .counter {
+        top: max(25px, calc(env(safe-area-inset-top) + 5px));
+    }
+
+    .card-container {
+        --card-width: 320px;
+        --card-height: 560px;
+    }
+
+    .card-title {
+        font-size: 1.5rem;
+    }
+
+    .card-text {
+        font-size: 0.95rem;
+    }
+
+    .card-content {
+        padding: 18px;
+    }
+
+    /* Smaller buttons for small screens */
+    .btn-icon {
+        width: 36px;
+        height: 36px;
+        font-size: 0.9rem;
+    }
+
+    /* Admin adjustments */
+    .admin-card {
+        padding: 18px;
+        border-radius: 20px;
+    }
+
+    .admin-input {
+        padding: 14px;
+        font-size: 0.95rem;
+    }
+
+    .admin-btn {
+        padding: 14px;
+        font-size: 0.95rem;
+    }
+
+    .list-thumb {
+        width: 60px;
+        height: 60px;
+    }
+
+    /* Sidebar adjustments */
+    .sidebar {
+        width: 90%;
+    }
+
+    .sidebar-header {
+        padding: 20px;
+    }
+
+    .sidebar-header h3 {
+        font-size: 1.2rem;
+    }
+}
+
+/* Safe area support for iOS devices */
+@supports (padding: max(0px)) {
+    body {
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
+        padding-left: env(safe-area-inset-left);
+        padding-right: env(safe-area-inset-right);
+    }
+}

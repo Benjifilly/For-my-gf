@@ -133,7 +133,7 @@ function createCardElement(data) {
             <div class="card-inner">
                 <div class="card-front">
                     <div class="card-image-container">
-                        <img src="${data.image}" class="card-image" draggable="false">
+                        <img src="${data.image}" class="card-image" draggable="false" onerror="this.style.opacity='0.3'; this.alt='Image non disponible';">
                         <div class="card-overlay"></div>
                     </div>
                     <div class="card-content">
@@ -197,7 +197,7 @@ function createCardElement(data) {
         // Standard Card
         el.innerHTML = `
             <div class="card-image-container">
-                <img src="${data.image}" class="card-image" draggable="false">
+                <img src="${data.image}" class="card-image" draggable="false" onerror="this.style.opacity='0.3'; this.alt='Image non disponible';">
                 ${data.video ? `
                     <video src="${data.video}" class="card-video" loop muted playsinline style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; z-index:2;"></video>
                     <div class="video-indicator" style="position:absolute; top:10px; right:10px; color:rgba(255,255,255,0.7); font-size:1.2rem; z-index:4; text-shadow:0 2px 4px rgba(0,0,0,0.5);">
