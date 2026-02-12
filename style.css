@@ -7,6 +7,13 @@
     --glass-border: rgba(255, 255, 255, 0.2);
 }
 
+/* Prevent pinch-to-zoom and overscroll on iOS */
+html, body {
+    touch-action: manipulation;
+    overscroll-behavior: none;
+    -webkit-text-size-adjust: 100%;
+}
+
 * {
     box-sizing: border-box;
     margin: 0;
